@@ -1,0 +1,139 @@
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    text-align: center;
+    width: 100%;
+    max-width: 550px;
+}
+
+.input-section {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+input, select, button {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+
+.palette {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    height: 60px; /* 높이 고정 */
+    align-items: center;
+    background: #eee;
+    border-radius: 8px;
+}
+
+/* 기존 CSS 내용 유지하되, .shape-btn 부분만 아래 내용으로 교체하세요 */
+
+.shape-btn {
+    width: 50px;
+    height: 50px;
+    cursor: grab; /* 손바닥 모양 커서 */
+    transition: transform 0.1s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    /* 드래그 할 때 텍스트처럼 선택되지 않게 함 */
+    user-select: none; 
+}
+
+.shape-btn:active {
+    cursor: grabbing; /* 움켜쥔 손 모양 */
+    transform: scale(0.9);
+}
+
+/* 캔버스 영역에 드래그해서 올렸을 때 효과 */
+.canvas-wrapper {
+    position: relative; /* 좌표 계산 기준점 */
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    transition: border-color 0.2s;
+}
+
+/* 드래그한 물체가 캔버스 위에 올라왔을 때 테두리 색 변경 */
+.canvas-wrapper.drag-over {
+    border-color: #4dabf7;
+    background-color: #f8f9fa;
+}
+#send-btn {
+    width: 100%;
+    background-color: #ff6b6b;
+    color: white;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+#send-btn:hover { background-color: #fa5252; }
+/* 기존 CSS 아래에 추가하세요 */
+
+.hidden {
+    display: none !important; /* 화면에서 아예 없애버림 */
+}
+
+.next-btn {
+    width: 100%;
+    background-color: #4dabf7;
+    color: white;
+    padding: 15px;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+.next-btn:hover { background-color: #339af0; }
+/* 기존 CSS에 아래 내용을 추가/수정하세요 */
+
+/* 색상 팔레트 영역 */
+.color-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 5px;
+}
+
+.color-btn {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.color-btn:hover {
+    transform: scale(1.2);
+}
+
+.color-btn.active {
+    border-color: #333; /* 선택된 색상은 테두리 진하게 */
+    transform: scale(1.1);
+}
+
+/* 도형 버튼 (색상이 바뀔 것이므로 배경색 트랜지션 추가) */
+.shape-btn {
+    /* 기존 속성 유지... */
+    transition: transform 0.1s, background-color 0.3s; /* 색상 변경 부드럽게 */
+}
