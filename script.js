@@ -2,8 +2,7 @@
    1. 초기 설정 및 데이터
    ========================================= */
 
-const socket = io("http://localhost:3000"); 
-
+const socket = io("http://54.252.151.147:3000");
 const canvas = new fabric.Canvas('c');
 canvas.backgroundColor = '#ffffff';
 canvas.selection = false; 
