@@ -1,0 +1,31 @@
+name: Deploy Node.js App to EC2
+
+on:
+  push:
+    # main 브랜치에 코드를 푸시하면 이 작업이 자동으로 실행됩니다.
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy via SSH (Auto Update)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          # GitHub Secrets에 등록한 값들(IP, 사용자, 개인키)을 사용합니다.
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            # 1. 프로젝트 폴더로 이동합니다.
+            cd /home/ubuntu/bloom-server 
+
+            # 2. 깃허브에서 최신 코드를 당겨 받습니다.
+            git pull origin main
+
+            # 3. PM2를 사용하여 서버를 부드럽게 리로드합니다.
+            pm2 reload BloomSocket
