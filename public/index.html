@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sejong Bloom</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+
+        <div id="step-1">
+            <h1>환영합니다!</h1>
+            <p>이름과 사는 곳을 알려주세요.</p>
+            <div class="input-section">
+                <input type="text" id="username" placeholder="이름 입력">
+                <select id="district-select">
+                    <option value="" disabled selected>동네 선택</option>
+                    <option value="areum">아름동</option>
+                    <option value="dodam">도담동</option>
+                    <option value="boram">보람동</option>
+                </select>
+            </div>
+            <button class="next-btn" onclick="goToStep2()">꽃 만들러 가기</button>
+        </div>
+
+        <div id="step-2" class="hidden">
+            <h2 id="step-2-title" class="step-title">꽃 만들기</h2>
+            <p class="guide-text">1. 색을 고르고 <br> 2. 도형을 드래그하세요!</p>
+
+            <div id="color-palette" class="color-row"></div>
+
+            <div id="shape-palette" class="palette"></div>
+
+            <div class="canvas-wrapper">
+                <canvas id="c" width="500" height="500"></canvas>
+            </div>
+
+            <button class="send-btn" onclick="sendFlower()">전송하기</button>
+        </div>
+        <div id="step-3" class="hidden">
+            <h1>전송 완료!</h1>
+            <p>대형 화면을 확인해보세요.</p>
+            <p>당신의 꽃이 피어났습니다.</p>
+            <button onclick="location.reload()">처음으로</button>
+        </div>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
