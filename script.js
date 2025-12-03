@@ -1,11 +1,8 @@
-/* =========================================
-   1. 초기 설정 및 데이터
-   ========================================= */
 
 const socket = io("http://54.252.151.147:3000");
 const canvas = new fabric.Canvas('c');
 canvas.backgroundColor = '#ffffff';
-canvas.selection = false; 
+canvas.selection = false;
 
 // 사용할 색상 목록 (파스텔 톤 위주)
 const colorList = [
@@ -18,19 +15,19 @@ let currentSelectedColor = colorList[0];
 
 // 동네별 도형 데이터 (이제 여기서 color는 제거하고, 모양 정보만 씁니다)
 const districtShapes = {
-    'areum': [ 
-        { type: 'circle', cssShape: '50%' }, 
+    'areum': [
         { type: 'circle', cssShape: '50%' },
-        { type: 'ellipse', cssShape: '50% / 30%' } 
+        { type: 'circle', cssShape: '50%' },
+        { type: 'ellipse', cssShape: '50% / 30%' }
     ],
-    'dodam': [ 
-        { type: 'triangle', cssShape: 'polygon(50% 0%, 0% 100%, 100% 100%)' }, 
+    'dodam': [
         { type: 'triangle', cssShape: 'polygon(50% 0%, 0% 100%, 100% 100%)' },
-        { type: 'rect', cssShape: '0%' } 
+        { type: 'triangle', cssShape: 'polygon(50% 0%, 0% 100%, 100% 100%)' },
+        { type: 'rect', cssShape: '0%' }
     ],
-    'boram': [ 
-        { type: 'rect', cssShape: '0%' }, 
-        { type: 'rect', cssShape: '0%' }, 
+    'boram': [
+        { type: 'rect', cssShape: '0%' },
+        { type: 'rect', cssShape: '0%' },
         { type: 'rect', cssShape: '0%' }
     ]
 };
@@ -46,7 +43,7 @@ function initColorPalette() {
         const btn = document.createElement('div');
         btn.className = 'color-btn';
         btn.style.backgroundColor = color;
-        
+
         // 첫 번째 색상은 기본 선택 상태로
         if (index === 0) btn.classList.add('active');
 
@@ -86,22 +83,22 @@ function generatePalette(districtCode) {
     const paletteDiv = document.getElementById('shape-palette');
     const shapes = districtShapes[districtCode];
 
-    paletteDiv.innerHTML = ''; 
+    paletteDiv.innerHTML = '';
 
     shapes.forEach((shapeData) => {
         const btn = document.createElement('div');
         btn.className = 'shape-btn';
-        
+
         // 초기 색상은 현재 선택된 색상으로 설정
         btn.style.backgroundColor = currentSelectedColor;
-        
+
         // 모양 CSS 적용
-        if(shapeData.cssShape.startsWith('polygon')) {
+        if (shapeData.cssShape.startsWith('polygon')) {
             btn.style.clipPath = shapeData.cssShape;
         } else {
             btn.style.borderRadius = shapeData.cssShape;
         }
-        
+
         btn.setAttribute('draggable', true);
 
         // [중요] 드래그 시작 시점의 '현재 색상'을 데이터에 담아 보냄
@@ -112,11 +109,11 @@ function generatePalette(districtCode) {
             };
             e.dataTransfer.setData('shapeData', JSON.stringify(dataToSend));
         });
-        
+
         // 클릭해서 추가하는 경우를 위해 (모바일 등)
         btn.onclick = () => {
-             // 클릭 시점의 색상 사용
-             addShapeAtPosition({ ...shapeData, color: currentSelectedColor }, 250, 250);
+            // 클릭 시점의 색상 사용
+            addShapeAtPosition({ ...shapeData, color: currentSelectedColor }, 250, 250);
         };
 
         paletteDiv.appendChild(btn);
@@ -138,7 +135,7 @@ function goToStep2() {
 
     document.getElementById('step-1').classList.add('hidden');
     document.getElementById('step-2').classList.remove('hidden');
-    canvas.requestRenderAll(); 
+    canvas.requestRenderAll();
 
     // 색상 팔레트 만들기
     initColorPalette();
@@ -153,9 +150,9 @@ function goToStep2() {
    ========================================= */
 
 const canvasContainer = document.querySelector('.canvas-wrapper');
-canvasContainer.addEventListener('dragover', function(e) { e.preventDefault(); canvasContainer.classList.add('drag-over'); });
-canvasContainer.addEventListener('dragleave', function(e) { canvasContainer.classList.remove('drag-over'); });
-canvasContainer.addEventListener('drop', function(e) {
+canvasContainer.addEventListener('dragover', function (e) { e.preventDefault(); canvasContainer.classList.add('drag-over'); });
+canvasContainer.addEventListener('dragleave', function (e) { canvasContainer.classList.remove('drag-over'); });
+canvasContainer.addEventListener('drop', function (e) {
     e.preventDefault();
     canvasContainer.classList.remove('drag-over');
     const jsonStr = e.dataTransfer.getData('shapeData');
@@ -181,7 +178,7 @@ function addShapeAtPosition(data, x, y) {
 
     canvas.add(shape);
     canvas.bringToFront(shape);
-    
+
     // 등장 애니메이션
     shape.set({ scaleX: 0, scaleY: 0 });
     shape.animate('scaleX', 1, { duration: 300, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
@@ -189,7 +186,7 @@ function addShapeAtPosition(data, x, y) {
 }
 
 // 클릭 시 도형 선택 및 색상 변경 가능하게 이벤트 연결
-canvas.on('mouse:down', function(options) {
+canvas.on('mouse:down', function (options) {
     if (options.target) {
         canvas.bringToFront(options.target);
         // 만약 사용자가 현재 선택해둔 색상이 있다면, 클릭한 도형 색도 바꿀지?
@@ -208,7 +205,7 @@ function sendFlower() {
         userName: username, location: location,
         shapes: objects.map((obj, index) => ({
             type: obj.type, color: obj.fill, x: obj.left, y: obj.top,
-            scaleX: obj.scaleX, scaleY: obj.scaleY, rotation: obj.angle, layerOrder: index 
+            scaleX: obj.scaleX, scaleY: obj.scaleY, rotation: obj.angle, layerOrder: index
         }))
     };
     socket.emit("submit_flower", flowerData);

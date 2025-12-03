@@ -135,5 +135,5 @@ input, select, button {
 /* 도형 버튼 (색상이 바뀔 것이므로 배경색 트랜지션 추가) */
 .shape-btn {
     /* 기존 속성 유지... */
-    transition: transform 0.1s, background-color 0.3s; /* 색상 변경 부드럽게 */
+    transition: transform 0.1s, background-color 0.3s; 
 }
