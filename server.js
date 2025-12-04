@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 app.use(cors());
 
-// [핵심] public 폴더를 웹사이트 메인으로 설정!
+// [ 핵심 ] public 폴더를 웹사이트 메인으로 설정!
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
