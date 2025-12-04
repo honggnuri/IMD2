@@ -1,5 +1,5 @@
 
-const socket = io("http://3.27.95.51:3000");
+const socket = io("http://15.134.86.182:3000");
 const canvas = new fabric.Canvas('c');
 canvas.backgroundColor = '#ffffff';
 canvas.selection = false;
