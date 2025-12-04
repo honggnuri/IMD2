@@ -1,139 +1,196 @@
 body {
-    font-family: 'Noto Sans KR', sans-serif;
-    background-color: #f4f4f4;
+    font-family: sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    background-color: #f0f0f0;
     margin: 0;
 }
 
 .container {
-    background: white;
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     text-align: center;
-    width: 100%;
-    max-width: 550px;
+    width: 90%;
+    max-width: 600px;
 }
-
-.input-section {
-    margin-bottom: 20px;
-    display: flex;
-    gap: 10px;
-}
-
-input, select, button {
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    font-size: 16px;
-}
-
-.palette {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 15px;
-    height: 60px; /* 높이 고정 */
-    align-items: center;
-    background: #eee;
-    border-radius: 8px;
-}
-
-/* 기존 CSS 내용 유지하되, .shape-btn 부분만 아래 내용으로 교체하세요 */
-
-.shape-btn {
-    width: 50px;
-    height: 50px;
-    cursor: grab; /* 손바닥 모양 커서 */
-    transition: transform 0.1s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    /* 드래그 할 때 텍스트처럼 선택되지 않게 함 */
-    user-select: none; 
-}
-
-.shape-btn:active {
-    cursor: grabbing; /* 움켜쥔 손 모양 */
-    transform: scale(0.9);
-}
-
-/* 캔버스 영역에 드래그해서 올렸을 때 효과 */
-.canvas-wrapper {
-    position: relative; /* 좌표 계산 기준점 */
-    border: 2px dashed #dee2e6;
-    border-radius: 10px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: center;
-    transition: border-color 0.2s;
-}
-
-/* 드래그한 물체가 캔버스 위에 올라왔을 때 테두리 색 변경 */
-.canvas-wrapper.drag-over {
-    border-color: #4dabf7;
-    background-color: #f8f9fa;
-}
-#send-btn {
-    width: 100%;
-    background-color: #ff6b6b;
-    color: white;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-}
-#send-btn:hover { background-color: #fa5252; }
-/* 기존 CSS 아래에 추가하세요 */
 
 .hidden {
-    display: none !important; /* 화면에서 아예 없애버림 */
+    display: none !important; /* JS에서 hidden 클래스로 완벽하게 숨김 */
+}
+
+h1, h2 {
+    color: #333;
+}
+.step-subtitle {
+    margin-top: 5px;
+    margin-bottom: 10px;
+    color: #555;
+    font-size: 1.1em;
+}
+
+/* 입력 필드 */
+.input-section {
+    margin: 20px 0;
+}
+
+input[type="text"], select {
+    padding: 10px;
+    margin: 5px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 80%;
+    box-sizing: border-box;
+}
+
+/* 버튼 스타일 */
+button {
+    padding: 12px 25px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s;
 }
 
 .next-btn {
-    width: 100%;
-    background-color: #4dabf7;
+    background-color: #5cb85c;
     color: white;
-    padding: 15px;
-    font-size: 18px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-top: 20px;
 }
-.next-btn:hover { background-color: #339af0; }
-/* 기존 CSS에 아래 내용을 추가/수정하세요 */
 
-/* 색상 팔레트 영역 */
+.send-btn {
+    background-color: #007bff;
+    color: white;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+/* =========================================
+   캐러셀 적용 영역
+   ========================================= */
+
+/* 색상 팔레트 (캐러셀) */
 .color-row {
     display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 15px;
-    padding: 5px;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-bottom: 20px;
+    
+    overflow-x: auto; 
+    flex-wrap: nowrap; 
+    padding-bottom: 10px;
 }
-
 .color-btn {
-    width: 35px;
-    height: 35px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     cursor: pointer;
-    transition: transform 0.2s, border-color 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 3px solid transparent; 
+    transition: border 0.1s;
+    flex-shrink: 0; 
 }
-
-.color-btn:hover {
-    transform: scale(1.2);
-}
-
 .color-btn.active {
-    border-color: #333; /* 선택된 색상은 테두리 진하게 */
-    transform: scale(1.1);
+    border: 3px solid #333; 
 }
 
-/* 도형 버튼 (색상이 바뀔 것이므로 배경색 트랜지션 추가) */
+/* 도형 팔레트 (캐러셀) */
+.palette {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+    min-height: 80px;
+    
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 10px;
+}
+
 .shape-btn {
-    /* 기존 속성 유지... */
-    transition: transform 0.1s, background-color 0.3s; 
+    width: 80px;
+    height: 80px;
+    cursor: grab;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    border: 1px solid #ddd;
+    box-sizing: border-box;
+    padding: 10px; 
+    flex-shrink: 0; 
+}
+
+.shape-btn svg {
+    max-width: 100%;
+    max-height: 100%;
+    display: block; 
+    box-sizing: border-box; 
+}
+
+
+/* 캔버스 영역 */
+.canvas-wrapper {
+    /* ... (기존 스타일 유지) ... */
+    width: 500px;
+    height: 500px;
+    max-width: 100%; 
+    margin: 20px auto;
+    border: 2px dashed #ccc;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+ 
+#c {
+    background-color: #ffffff;
+}
+
+.drag-over {
+    border-color: #007bff;
+}
+
+.guide-text {
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* =========================================
+   반응형 최적화 (Mobile Responsiveness)
+   ========================================= */
+
+/* 스크롤바 숨기기 */
+.color-row::-webkit-scrollbar,
+.palette::-webkit-scrollbar {
+    display: none;
+}
+.color-row, .palette {
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+
+@media (max-width: 650px) {
+    .container {
+        width: 95%;
+        padding: 15px;
+    }
+
+    /* 🌟 [핵심 수정] 캔버스 래퍼가 모바일에서 부모(.container) 너비를 따르도록 설정 */
+    .canvas-wrapper {
+        width: 100%; /* 부모(.container)의 95% 너비를 따름 */
+        max-width: 100%; 
+        margin: 15px auto;
+    }
+
+    input[type="text"], select {
+        width: 95%;
+        margin-bottom: 10px;
+    }
 }

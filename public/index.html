@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,10 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
-
 <body>
     <div class="container">
-
         <div id="step-1">
             <h1>환영합니다!</h1>
             <p>이름과 사는 곳을 알려주세요.</p>
@@ -19,9 +17,21 @@
                 <input type="text" id="username" placeholder="이름 입력">
                 <select id="district-select">
                     <option value="" disabled selected>동네 선택</option>
-                    <option value="areum">아름동</option>
+                    <option value="eojindong">어진동</option>
                     <option value="dodam">도담동</option>
-                    <option value="boram">보람동</option>
+                    <option value="areum">아름동</option>
+                    <option value="hamildong">한솔동 (Hamildong)</option>
+                    <option value="naseongdong">나성동</option>
+                    <option value="bangok_jiphyeon">반곡/집현동</option>
+                    <option value="jochiwon">조치원</option>
+                    <option value="jeonui_myeon">전의면</option>
+                    <option value="yeonseomyeon">연서면</option>
+                    <option value="bugangmyeon">부강면</option>
+                    <option value="geumnammyeon">금남면</option>
+                    <option value="yeongimyeon">연기면</option>
+                    <option value="janggunmyeon">장군면</option>
+                    <option value="yeondongmyeon">연동면</option>
+                    <option value="otherarea">기타 지역</option>
                 </select>
             </div>
             <button class="next-btn" onclick="goToStep2()">꽃 만들러 가기</button>
@@ -29,27 +39,37 @@
 
         <div id="step-2" class="hidden">
             <h2 id="step-2-title" class="step-title">꽃 만들기</h2>
-            <p class="guide-text">1. 색을 고르고 <br> 2. 도형을 드래그하세요!</p>
-
+            <p class="guide-text">1. 색을 고르고 조각을 드래그하세요! (캔버스에서 크기 조절/회전 가능)</p>
+            
             <div id="color-palette" class="color-row"></div>
+            
+            <div id="selection-views">
+                <div id="flower-selection-view">
+                    <h3 class="step-subtitle">꽃잎/중심 조각 선택</h3>
+                    <div id="flower-palette-container" class="palette"></div>
+                    <button class="next-btn" onclick="goToLeafSelection()">다음: 잎 조각 선택하기</button>
+                </div>
 
-            <div id="shape-palette" class="palette"></div>
-
+                <div id="leaf-selection-view" class="hidden">
+                    <h3 class="step-subtitle">잎 조각 선택</h3>
+                    <div id="leaf-palette-container" class="palette"></div>
+                    <button class="prev-btn" onclick="goToFlowerSelection()">이전: 꽃잎 조각</button>
+                    <button class="send-btn" onclick="sendFlower()">전송하기</button>
+                </div>
+            </div>
+            
             <div class="canvas-wrapper">
                 <canvas id="c" width="500" height="500"></canvas>
             </div>
-
-            <button class="send-btn" onclick="sendFlower()">전송하기</button>
         </div>
+
         <div id="step-3" class="hidden">
             <h1>전송 완료!</h1>
             <p>대형 화면을 확인해보세요.</p>
             <p>당신의 꽃이 피어났습니다.</p>
             <button onclick="location.reload()">처음으로</button>
         </div>
-
     </div>
     <script src="script.js"></script>
 </body>
-
 </html>
