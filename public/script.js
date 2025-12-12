@@ -1,4 +1,4 @@
-// script.js (최종 버전 - 모든 조각 표시)
+// script.js (최종 수정 버전 - 개별 색상 전송 버그 수정)
 
 const SERVER_URL = "http://15.134.86.182:3000";
 const socket = io(SERVER_URL);
@@ -16,7 +16,7 @@ let currentSelectedColor = colorList[0];
 const districtShapes = {
     'eojindong':        ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
     'dodam':            ['F8', 'F9', 'F10', 'F11', 'F12', 'F13', 'F14'],
-    'areum':            ['F15', 'F16', 'F17', 'F18', 'F19', 'F4'], // 6개
+    'areum':            ['F15', 'F16', 'F17', 'F18', 'F19', 'F4'], 
     'hamildong':        ['F21', 'F22', 'F23', 'F24', 'F25', 'F26', 'F27'],
     'naseongdong':      ['F28', 'F15', 'F29', 'F30', 'F31', 'F32', 'F33'],
     'bangok_jiphyeon':  ['F34', 'F35', 'F36', 'F37', 'F38', 'F39', 'F40'],
@@ -32,7 +32,7 @@ const districtShapes = {
 };
 
 /* =========================================
-   SVG 텍스트 및 색상 유틸리티 (유지)
+   SVG 텍스트 및 색상 유틸리티
    ========================================= */
 function colorizeSvgText(svgText, color) {
     let newSvgText = svgText;
@@ -79,9 +79,11 @@ function selectColor(btnElement, color) {
     document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
     btnElement.classList.add('active');
     
+    // 🌟 [수정 1] 이미 배치된 조각의 색을 바꿀 때, 데이터(userColor)도 함께 업데이트
     const activeObject = canvas.getActiveObject();
     if (activeObject) {
         applyColorToSvg(activeObject, color);
+        activeObject.set('userColor', color); // 색상 정보 저장
         canvas.renderAll();
     }
     
@@ -99,17 +101,15 @@ function updatePaletteSvgColors(color) {
 }
 
 /* =========================================
-   [NEW] 조각 타입 결정 유틸리티 (개발자 정의 로직)
+   조각 타입 결정 유틸리티
    ========================================= */
 function assignComponentType(index, totalCount) {
-    // 7개일 경우: 0~3 (Flower), 4~6 (Leaf)
-    // 6개일 경우: 0~2 (Flower), 3~5 (Leaf)
     const splitPoint = (totalCount === 7) ? 4 : 3;
     return (index < splitPoint) ? "Flower" : "Leaf";
 }
 
 /* =========================================
-   2. 도형 팔레트 생성 (전체 조각 중복 표시)
+   도형 팔레트 생성
    ========================================= */
 async function generatePalette(districtCode) {
     const flowerPaletteDiv = document.getElementById('flower-palette-container');
@@ -132,27 +132,23 @@ async function generatePalette(districtCode) {
     const loadedSvgs = await Promise.all(svgLoadPromises);
     const totalCount = loadedSvgs.length;
 
-    // 🌟 1. 각 조각에 대해 타입(Flower/Leaf)을 결정하여 배열에 저장
     const components = loadedSvgs.map(({ shapeName, svgText }, index) => ({
         shapeName, 
         svgText,
-        componentType: assignComponentType(index, totalCount) // 타입 결정
+        componentType: assignComponentType(index, totalCount)
     }));
 
-    // 🌟 2. Flower 팔레트 (전체 조각 표시)
     components.forEach(comp => {
         const btn = createPaletteButton(comp.shapeName, comp.svgText, comp.componentType);
         flowerPaletteDiv.appendChild(btn);
     });
     
-    // 🌟 3. Leaf 팔레트 (전체 조각 표시)
     components.forEach(comp => {
         const btn = createPaletteButton(comp.shapeName, comp.svgText, comp.componentType);
         leafPaletteDiv.appendChild(btn);
     });
 }
 
-// 🌟 [NEW] 팔레트 버튼 생성 유틸리티 함수
 function createPaletteButton(shapeName, svgText, componentType) {
     const btn = document.createElement('div');
     btn.className = 'shape-btn';
@@ -164,7 +160,6 @@ function createPaletteButton(shapeName, svgText, componentType) {
 
     btn.setAttribute('draggable', true);
     
-    // 드래그 시 실제 타입(Flower/Leaf)을 데이터에 포함하여 전송
     btn.addEventListener('dragstart', (e) => {
         const dataToSend = {
             type: shapeName, 
@@ -181,9 +176,8 @@ function createPaletteButton(shapeName, svgText, componentType) {
     return btn;
 }
 
-
 /* =========================================
-   3. 화면 전환 및 초기화 (반응형 대응)
+   화면 전환 및 초기화
    ========================================= */
 function goToFlowerSelection() {
     document.getElementById('leaf-selection-view').classList.add('hidden');
@@ -207,12 +201,10 @@ async function goToStep2() {
     document.getElementById('step-2').classList.remove('hidden');
     
     resizeCanvas(); 
-    
     canvas.requestRenderAll();
 
     initColorPalette();
     await generatePalette(selectedDistrict);
-    
     goToFlowerSelection(); 
 }
 
@@ -223,18 +215,15 @@ function resizeCanvas() {
     
     canvas.setWidth(newSize);
     canvas.setHeight(newSize);
-    
     wrapper.style.height = `${newSize}px`;
-
     canvas.renderAll();
 }
 
 window.addEventListener('resize', resizeCanvas);
 document.addEventListener('DOMContentLoaded', resizeCanvas);
 
-
 /* =========================================
-   드래그 핸들러 및 45도 스냅 로직 (유지)
+   드래그 핸들러 및 45도 스냅
    ========================================= */
 const canvasContainer = document.querySelector('.canvas-wrapper');
 canvasContainer.addEventListener('dragover', function (e) { e.preventDefault(); canvasContainer.classList.add('drag-over'); });
@@ -251,7 +240,6 @@ canvasContainer.addEventListener('drop', function (e) {
     addShapeAtPosition(shapeData, x, y);
 });
 
-
 canvas.on('object:rotating', function (options) {
     const target = options.target;
     if (target) {
@@ -262,32 +250,29 @@ canvas.on('object:rotating', function (options) {
     }
 });
 
-
 /* =========================================
-   4. SVG 로드 및 캔버스 추가
+   SVG 로드 및 캔버스 추가
    ========================================= */
 function addShapeAtPosition(data, x, y) {
     const svgPath = `assets/${data.type}.svg`; 
     
     fabric.loadSVGFromURL(svgPath, (objects, options) => {
-        
         const loadedObj = fabric.util.groupSVGElements(objects, options);
 
         applyColorToSvg(loadedObj, data.color);
 
         loadedObj.set({
             left: x, top: y, originX: 'center', originY: 'center', angle: 0, opacity: 0.9,
-            
             hasControls: true, hasBorders: true,
-            lockScalingX: true, 
-            lockScalingY: true, 
-            lockRotation: false,
-            lockUniScaling: true, // 비율 유지
+            lockScalingX: true, lockScalingY: true, lockRotation: false, lockUniScaling: true,
             perPixelTargetFind: true
         });
 
         loadedObj.set('componentType', data.componentType); 
         loadedObj.set('type', data.type); 
+        
+        // 🌟 [수정 2] 조각 생성 시, 해당 조각의 색상을 프로퍼티로 저장
+        loadedObj.set('userColor', data.color); 
 
         canvas.add(loadedObj);
         canvas.bringToFront(loadedObj);
@@ -304,9 +289,8 @@ canvas.on('mouse:down', function (options) {
     }
 });
 
-
 /* =========================================
-   6. 서버로 꽃 데이터 전송
+   서버로 꽃 데이터 전송 (버그 수정됨)
    ========================================= */
 function sendFlower() {
     const username = document.getElementById('username').value;
@@ -320,13 +304,17 @@ function sendFlower() {
         location: location, 
         shapes: objects.map((obj, index) => ({
             type: obj.get('type') || 'unknown', 
-            color: currentSelectedColor, 
+            
+            // 🌟 [수정 3] 마지막 선택 색상(currentSelectedColor)이 아니라
+            // 각 조각이 기억하고 있는 색상(userColor)을 보냄
+            color: obj.get('userColor') || currentSelectedColor, 
+            
             x: obj.left, y: obj.top,
             scaleX: obj.scaleX, 
             scaleY: obj.scaleY, 
             rotation: obj.angle, 
             layerOrder: index,
-            componentType: obj.get('componentType') || 'Unknown' // Flower/Leaf 타입 전송
+            componentType: obj.get('componentType') || 'Unknown'
         }))
     };
     
