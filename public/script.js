@@ -322,5 +322,145 @@ function sendFlower() {
 
     document.getElementById('step-2').classList.add('hidden');
     document.getElementById('step-3').classList.remove('hidden');
-    
+
 }
+
+/* =========================================
+   [디버깅용] 랜덤 꽃 자동 생성 버튼 & 로직
+   ========================================= */
+function createDebugButton() {
+    // 중복 생성 방지
+    if (document.getElementById('debug-btn')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'debug-btn';
+    btn.innerText = "🎲 자동 완성 (Full)";
+    btn.style.position = "fixed";
+    btn.style.bottom = "20px";
+    btn.style.right = "20px";
+    btn.style.zIndex = "9999";
+    btn.style.padding = "15px 20px";
+    btn.style.fontSize = "16px";
+    btn.style.fontWeight = "bold";
+    btn.style.backgroundColor = "#20bf6b"; // 초록색으로 변경
+    btn.style.color = "white";
+    btn.style.border = "none";
+    btn.style.borderRadius = "30px";
+    btn.style.boxShadow = "0 4px 6px rgba(0,0,0,0.2)";
+    btn.style.cursor = "pointer";
+
+    btn.onclick = generateRandomFlowerFull; 
+    document.body.appendChild(btn);
+}
+
+// 2. [핵심] Step 1부터 Step 2 꽃 생성까지 한방에 처리
+async function generateRandomFlowerFull() {
+    
+    // --- [단계 1] Step 1 화면이라면 이름/동네 자동 선택 ---
+    const step1 = document.getElementById('step-1');
+    if (!step1.classList.contains('hidden')) {
+        console.log("🛠️ Step 1 자동 패스 중...");
+
+        // 1. 이름 랜덤 입력
+        const randomNames = ["철수", "영희", "User", "Tester", "Bot"];
+        const randomNum = Math.floor(Math.random() * 1000);
+        const randName = randomNames[Math.floor(Math.random() * randomNames.length)] + "_" + randomNum;
+        document.getElementById('username').value = randName;
+
+        // 2. 동네 랜덤 선택
+        const districtSelect = document.getElementById('district-select');
+        const keys = Object.keys(districtShapes);
+        // 'otherarea' 같은 게 나올 수 있으니 랜덤 픽
+        const randomKey = keys[Math.floor(Math.random() * keys.length)];
+        districtSelect.value = randomKey;
+
+        // 3. 다음 단계로 이동 (goToStep2는 async 함수이므로 await)
+        await goToStep2(); 
+    }
+
+    // --- [단계 2] 캔버스 초기화 및 랜덤 꽃 그리기 ---
+    canvas.clear();
+    canvas.backgroundColor = '#ffffff';
+
+    const districtSelect = document.getElementById('district-select');
+    const district = districtSelect.value;
+    const availableShapes = districtShapes[district];
+
+    if (!availableShapes || availableShapes.length === 0) {
+        console.error("도형 데이터가 없습니다.");
+        return;
+    }
+
+    // 조각 개수 랜덤 (5~8개)
+    const numShapes = Math.floor(Math.random() * 4) + 5; 
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    for (let i = 0; i < numShapes; i++) {
+        // 랜덤 모양
+        const shapeIndex = Math.floor(Math.random() * availableShapes.length);
+        const shapeName = availableShapes[shapeIndex];
+        
+        // 랜덤 색상
+        const randomColor = colorList[Math.floor(Math.random() * colorList.length)];
+
+        // 타입 결정
+        const totalCount = availableShapes.length;
+        const compType = assignComponentType(shapeIndex, totalCount);
+
+        // 위치 랜덤 (중심에서 -60 ~ +60 픽셀)
+        const offsetX = (Math.random() - 0.5) * 120; 
+        const offsetY = (Math.random() - 0.5) * 120;
+
+        // 각도 랜덤 (45도 단위)
+        const randomAngle = Math.floor(Math.random() * 8) * 45;
+        
+        // 데이터 구성
+        const data = {
+            type: shapeName,
+            color: randomColor,
+            componentType: compType
+        };
+
+        // 조각 추가 실행
+        addShapeAtPosition_Random(data, centerX + offsetX, centerY + offsetY, randomAngle);
+    }
+    
+    console.log(`🌸 [${district}] 자동 꽃 생성 완료!`);
+}
+
+// 3. 랜덤 배치를 위한 헬퍼 함수 (회전값 적용)
+function addShapeAtPosition_Random(data, x, y, angle) {
+    const svgPath = `assets/${data.type}.svg`; 
+    
+    fabric.loadSVGFromURL(svgPath, (objects, options) => {
+        const loadedObj = fabric.util.groupSVGElements(objects, options);
+
+        applyColorToSvg(loadedObj, data.color);
+
+        loadedObj.set({
+            left: x, top: y, 
+            originX: 'center', originY: 'center', 
+            angle: angle, 
+            opacity: 0.9,
+            hasControls: true, hasBorders: true,
+            lockScalingX: true, lockScalingY: true, 
+            lockRotation: false, lockUniScaling: true,
+            perPixelTargetFind: true
+        });
+
+        loadedObj.set('componentType', data.componentType); 
+        loadedObj.set('type', data.type); 
+        loadedObj.set('userColor', data.color); 
+
+        canvas.add(loadedObj);
+        
+        // 뿅 하고 나타나는 효과
+        loadedObj.set({ scaleX: 0, scaleY: 0 });
+        loadedObj.animate('scaleX', 0.5, { duration: 300, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
+        loadedObj.animate('scaleY', 0.5, { duration: 300, easing: fabric.util.ease.easeOutBack });
+    });
+}
+
+// 페이지 로드 시 버튼 생성
+createDebugButton();
