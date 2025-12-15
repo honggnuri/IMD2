@@ -15,20 +15,20 @@ let currentSelectedColor = colorList[0];
 
 const districtShapes = {
     'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
-    'dodam': ['F8', 'F9', 'F10', 'F11', 'F12', 'F13', 'F14'],
-    'areum': ['F15', 'F16', 'F17', 'F18', 'F19', 'F4'],
-    'hamildong': ['F21', 'F22', 'F23', 'F24', 'F25', 'F26', 'F27'],
-    'naseongdong': ['F28', 'F15', 'F29', 'F30', 'F31', 'F32', 'F33'],
-    'bangok_jiphyeon': ['F34', 'F35', 'F36', 'F37', 'F38', 'F39', 'F40'],
-    'jochiwon': ['F6', 'F2', 'F13', 'F12', 'F20', 'F41', 'F32'],
-    'jeonui_myeon': ['F32', 'F13', 'F40', 'F11', 'F24', 'F20', 'F12'],
-    'yeonseomyeon': ['F8', 'F40', 'F20', 'F15', 'F23', 'F6', 'F17'],
-    'bugangmyeon': ['F42', 'F19', 'F31', 'F13', 'F25', 'F18', 'F43'],
-    'geumnammyeon': ['F18', 'F23', 'F42', 'F25', 'F29', 'F36', 'F44'],
-    'yeongimyeon': ['F2', 'F20', 'F28', 'F27', 'F1', 'F11', 'F45'],
-    'janggunmyeon': ['F44', 'F38', 'F3', 'F28', 'F42', 'F18', 'F17'],
-    'yeondongmyeon': ['F19', 'F14', 'F24', 'F38', 'F31', 'F37', 'F25'],
-    'otherarea': ['F40', 'F28', 'F17', 'F30', 'F19', 'F44', 'F14']
+    'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
+    'areum': ['F1', 'F2', 'F3', 'F12', 'F13', 'F14', 'F15'],
+    'hamildong': ['F1', 'F2', 'F3', 'F16', 'F17', 'F18', 'F19'],
+    'naseongdong': ['F1', 'F2', 'F3', 'F20', 'F21', 'F22', 'F23'],
+    'bangok_jiphyeon': ['F1', 'F2', 'F3', 'F24', 'F25', 'F26', 'F27'],
+    'jochiwon': ['F1', 'F2', 'F3', 'F28', 'F29', 'F30', 'F31'],
+    'jeonui_myeon': ['F1', 'F2', 'F3', 'F15', 'F30', 'F32', 'F33'],
+    'yeonseomyeon': ['F1', 'F2', 'F3', 'F6', 'F8', 'F13', 'F34'],
+    'bugangmyeon': ['F1', 'F2', 'F3', 'F35', 'F36', 'F37', 'F38'],
+    'geumnammyeon': ['F1', 'F2', 'F3', 'F14', 'F26', 'F36', 'F39'],
+    'yeongimyeon': ['F1', 'F2', 'F3', 'F32', 'F40', 'F41', 'F42'],
+    'janggunmyeon': ['F1', 'F2', 'F3', 'F13', 'F43', 'F44', 'F45'],
+    'yeondongmyeon': ['F1', 'F2', 'F3', 'F22', 'F36', 'F44', 'F46'],
+    'otherarea': ['F1', 'F2', 'F3', 'F11', 'F35', 'F47', 'F48']
 };
 
 /* =========================================
@@ -349,13 +349,13 @@ function createDebugButton() {
     btn.style.boxShadow = "0 4px 6px rgba(0,0,0,0.2)";
     btn.style.cursor = "pointer";
 
-    btn.onclick = generateRandomFlowerFull; 
+    btn.onclick = generateRandomFlowerFull;
     document.body.appendChild(btn);
 }
 
 // 2. [핵심] Step 1부터 Step 2 꽃 생성까지 한방에 처리
 async function generateRandomFlowerFull() {
-    
+
     // --- [단계 1] Step 1 화면이라면 이름/동네 자동 선택 ---
     const step1 = document.getElementById('step-1');
     if (!step1.classList.contains('hidden')) {
@@ -375,7 +375,7 @@ async function generateRandomFlowerFull() {
         districtSelect.value = randomKey;
 
         // 3. 다음 단계로 이동 (goToStep2는 async 함수이므로 await)
-        await goToStep2(); 
+        await goToStep2();
     }
 
     // --- [단계 2] 캔버스 초기화 및 랜덤 꽃 그리기 ---
@@ -392,7 +392,7 @@ async function generateRandomFlowerFull() {
     }
 
     // 조각 개수 랜덤 (5~8개)
-    const numShapes = Math.floor(Math.random() * 4) + 5; 
+    const numShapes = Math.floor(Math.random() * 4) + 5;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
@@ -400,7 +400,7 @@ async function generateRandomFlowerFull() {
         // 랜덤 모양
         const shapeIndex = Math.floor(Math.random() * availableShapes.length);
         const shapeName = availableShapes[shapeIndex];
-        
+
         // 랜덤 색상
         const randomColor = colorList[Math.floor(Math.random() * colorList.length)];
 
@@ -409,12 +409,12 @@ async function generateRandomFlowerFull() {
         const compType = assignComponentType(shapeIndex, totalCount);
 
         // 위치 랜덤 (중심에서 -60 ~ +60 픽셀)
-        const offsetX = (Math.random() - 0.5) * 120; 
+        const offsetX = (Math.random() - 0.5) * 120;
         const offsetY = (Math.random() - 0.5) * 120;
 
         // 각도 랜덤 (45도 단위)
         const randomAngle = Math.floor(Math.random() * 8) * 45;
-        
+
         // 데이터 구성
         const data = {
             type: shapeName,
@@ -425,36 +425,36 @@ async function generateRandomFlowerFull() {
         // 조각 추가 실행
         addShapeAtPosition_Random(data, centerX + offsetX, centerY + offsetY, randomAngle);
     }
-    
+
     console.log(`🌸 [${district}] 자동 꽃 생성 완료!`);
 }
 
 // 3. 랜덤 배치를 위한 헬퍼 함수 (회전값 적용)
 function addShapeAtPosition_Random(data, x, y, angle) {
-    const svgPath = `assets/${data.type}.svg`; 
-    
+    const svgPath = `assets/${data.type}.svg`;
+
     fabric.loadSVGFromURL(svgPath, (objects, options) => {
         const loadedObj = fabric.util.groupSVGElements(objects, options);
 
         applyColorToSvg(loadedObj, data.color);
 
         loadedObj.set({
-            left: x, top: y, 
-            originX: 'center', originY: 'center', 
-            angle: angle, 
+            left: x, top: y,
+            originX: 'center', originY: 'center',
+            angle: angle,
             opacity: 0.9,
             hasControls: true, hasBorders: true,
-            lockScalingX: true, lockScalingY: true, 
+            lockScalingX: true, lockScalingY: true,
             lockRotation: false, lockUniScaling: true,
             perPixelTargetFind: true
         });
 
-        loadedObj.set('componentType', data.componentType); 
-        loadedObj.set('type', data.type); 
-        loadedObj.set('userColor', data.color); 
+        loadedObj.set('componentType', data.componentType);
+        loadedObj.set('type', data.type);
+        loadedObj.set('userColor', data.color);
 
         canvas.add(loadedObj);
-        
+
         // 뿅 하고 나타나는 효과
         loadedObj.set({ scaleX: 0, scaleY: 0 });
         loadedObj.animate('scaleX', 0.5, { duration: 300, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
