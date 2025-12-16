@@ -1,5 +1,3 @@
-// script.js (최종 수정 버전 - 개별 색상 전송 버그 수정)
-
 const SERVER_URL = "http://15.134.86.182:3000";
 const socket = io(SERVER_URL);
 const canvas = new fabric.Canvas('c');
@@ -13,6 +11,7 @@ const colorList = [
 ];
 let currentSelectedColor = colorList[0];
 
+// 지역별 도형 데이터
 const districtShapes = {
     'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
     'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
@@ -31,9 +30,7 @@ const districtShapes = {
     'otherarea': ['F1', 'F2', 'F3', 'F11', 'F35', 'F47', 'F48']
 };
 
-/* =========================================
-   SVG 텍스트 및 색상 유틸리티
-   ========================================= */
+/* --- 유틸리티 함수 --- */
 function colorizeSvgText(svgText, color) {
     let newSvgText = svgText;
     newSvgText = newSvgText.replace(/fill\s*=\s*("|')([^"']+)("|')/gi, (match, p1, p2, p3) => {
@@ -61,6 +58,12 @@ function applyColorToSvg(loadedObj, color) {
     }
 }
 
+/* 🌟 [수정] 조각 타입을 나누지 않고 모두 'Flower'로 통일 */
+function assignComponentType(index, totalCount) {
+    return "Flower"; 
+}
+
+/* --- 초기화 및 팔레트 생성 --- */
 function initColorPalette() {
     const colorContainer = document.getElementById('color-palette');
     colorContainer.innerHTML = '';
@@ -79,14 +82,12 @@ function selectColor(btnElement, color) {
     document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
     btnElement.classList.add('active');
 
-    // 🌟 [수정 1] 이미 배치된 조각의 색을 바꿀 때, 데이터(userColor)도 함께 업데이트
     const activeObject = canvas.getActiveObject();
     if (activeObject) {
         applyColorToSvg(activeObject, color);
-        activeObject.set('userColor', color); // 색상 정보 저장
+        activeObject.set('userColor', color);
         canvas.renderAll();
     }
-
     updatePaletteSvgColors(color);
 }
 
@@ -94,227 +95,202 @@ function updatePaletteSvgColors(color) {
     document.querySelectorAll('.shape-btn').forEach(btn => {
         const originalSvg = btn.getAttribute('data-original-svg');
         if (originalSvg) {
-            const coloredSvg = colorizeSvgText(originalSvg, color);
-            btn.innerHTML = coloredSvg;
+            btn.innerHTML = colorizeSvgText(originalSvg, color);
         }
     });
 }
 
-/* =========================================
-   조각 타입 결정 유틸리티
-   ========================================= */
-function assignComponentType(index, totalCount) {
-    const splitPoint = (totalCount === 7) ? 4 : 3;
-    return (index < splitPoint) ? "Flower" : "Leaf";
-}
-
-/* =========================================
-   도형 팔레트 생성
-   ========================================= */
+/* 🌟 [수정] 파일 로드 실패 시 에러 처리 강화 */
 async function generatePalette(districtCode) {
-    const flowerPaletteDiv = document.getElementById('flower-palette-container');
-    const leafPaletteDiv = document.getElementById('leaf-palette-container');
-    flowerPaletteDiv.innerHTML = '';
-    leafPaletteDiv.innerHTML = '';
+    const flowerDiv = document.getElementById('flower-palette-container');
+    flowerDiv.innerHTML = '';
 
     const shapeNames = districtShapes[districtCode] || [];
 
-    const svgLoadPromises = shapeNames.map(shapeName =>
+    const loadedSvgs = await Promise.all(shapeNames.map(shapeName => 
         fetch(`assets/${shapeName}.svg`)
-            .then(response => response.text())
-            .then(svgText => ({ shapeName, svgText }))
-            .catch(error => {
-                console.error(`Error loading SVG ${shapeName}:`, error);
-                return { shapeName, svgText: `<svg width="60" height="60"><text y="30" fill="red">${shapeName} ERR</text></svg>` };
+            .then(res => {
+                if(!res.ok) throw new Error("File not found");
+                return res.text();
             })
-    );
+            .then(svgText => ({ shapeName, svgText, error: false }))
+            .catch(() => ({ 
+                shapeName, 
+                svgText: `<svg viewBox="0 0 50 50"><text y="25" fill="red" font-size="10">${shapeName}</text></svg>`,
+                error: true 
+            }))
+    ));
 
-    const loadedSvgs = await Promise.all(svgLoadPromises);
     const totalCount = loadedSvgs.length;
-
-    const components = loadedSvgs.map(({ shapeName, svgText }, index) => ({
-        shapeName,
-        svgText,
-        componentType: assignComponentType(index, totalCount)
-    }));
-
-    components.forEach(comp => {
-        const btn = createPaletteButton(comp.shapeName, comp.svgText, comp.componentType);
-        flowerPaletteDiv.appendChild(btn);
-    });
-
-    components.forEach(comp => {
-        const btn = createPaletteButton(comp.shapeName, comp.svgText, comp.componentType);
-        leafPaletteDiv.appendChild(btn);
+    loadedSvgs.forEach(({ shapeName, svgText, error }, index) => {
+        const type = assignComponentType(index, totalCount);
+        const btn = createPaletteButton(shapeName, svgText, type);
+        if(error) btn.style.border = "1px solid red"; // 파일 없으면 빨간 테두리
+        flowerDiv.appendChild(btn);
     });
 }
 
 function createPaletteButton(shapeName, svgText, componentType) {
     const btn = document.createElement('div');
     btn.className = 'shape-btn';
-
     btn.setAttribute('data-original-svg', svgText);
-
-    const coloredSvg = colorizeSvgText(svgText, currentSelectedColor);
-    btn.innerHTML = coloredSvg;
-
+    btn.innerHTML = colorizeSvgText(svgText, currentSelectedColor);
     btn.setAttribute('draggable', true);
 
     btn.addEventListener('dragstart', (e) => {
-        const dataToSend = {
-            type: shapeName,
-            color: currentSelectedColor,
-            componentType: componentType
-        };
-        e.dataTransfer.setData('shapeData', JSON.stringify(dataToSend));
+        const data = { type: shapeName, color: currentSelectedColor, componentType: componentType };
+        e.dataTransfer.setData('shapeData', JSON.stringify(data));
     });
 
     btn.onclick = () => {
-        addShapeAtPosition({ type: shapeName, color: currentSelectedColor, componentType: componentType }, 250, 250);
+        const center = canvas.getCenter();
+        addShapeAtPosition({ type: shapeName, color: currentSelectedColor, componentType: componentType }, center.left, center.top);
     };
 
     return btn;
 }
 
-/* =========================================
-   화면 전환 및 초기화
-   ========================================= */
-function goToFlowerSelection() {
-    document.getElementById('leaf-selection-view').classList.add('hidden');
-    document.getElementById('flower-selection-view').classList.remove('hidden');
-}
-
-function goToLeafSelection() {
-    document.getElementById('flower-selection-view').classList.add('hidden');
-    document.getElementById('leaf-selection-view').classList.remove('hidden');
-}
-
-async function goToStep2() {
+/* --- 화면 전환 --- */
+function goToStep2() {
     const username = document.getElementById('username').value.trim();
-    const districtSelect = document.getElementById('district-select');
-    const selectedDistrict = districtSelect.value;
-
-    if (!username) { alert("이름을 입력해주세요!"); return; }
-    if (!selectedDistrict) { alert("동네를 선택해주세요!"); return; }
+    const district = document.getElementById('district-select').value;
+    if (!username || !district) { alert("이름과 동네를 모두 입력해주세요!"); return; }
 
     document.getElementById('step-1').classList.add('hidden');
     document.getElementById('step-2').classList.remove('hidden');
 
     resizeCanvas();
-    canvas.requestRenderAll();
-
     initColorPalette();
-    await generatePalette(selectedDistrict);
-    goToFlowerSelection();
+    generatePalette(district);
 }
 
 function resizeCanvas() {
     const wrapper = document.querySelector('.canvas-wrapper');
-    const wrapperWidth = wrapper.getBoundingClientRect().width;
-    const newSize = wrapperWidth;
-
-    canvas.setWidth(newSize);
-    canvas.setHeight(newSize);
-    wrapper.style.height = `${newSize}px`;
+    const width = wrapper.clientWidth;
+    const height = wrapper.clientHeight || width;
+    canvas.setWidth(width);
+    canvas.setHeight(height);
     canvas.renderAll();
 }
-
 window.addEventListener('resize', resizeCanvas);
-document.addEventListener('DOMContentLoaded', resizeCanvas);
 
-/* =========================================
-   드래그 핸들러 및 45도 스냅
-   ========================================= */
+/* --- 드래그 앤 드롭 --- */
 const canvasContainer = document.querySelector('.canvas-wrapper');
-canvasContainer.addEventListener('dragover', function (e) { e.preventDefault(); canvasContainer.classList.add('drag-over'); });
-canvasContainer.addEventListener('dragleave', function (e) { canvasContainer.classList.remove('drag-over'); });
-canvasContainer.addEventListener('drop', function (e) {
+canvasContainer.addEventListener('dragover', e => { e.preventDefault(); canvasContainer.classList.add('drag-over'); });
+canvasContainer.addEventListener('dragleave', () => canvasContainer.classList.remove('drag-over'));
+canvasContainer.addEventListener('drop', e => {
     e.preventDefault();
     canvasContainer.classList.remove('drag-over');
     const jsonStr = e.dataTransfer.getData('shapeData');
-    if (!jsonStr) return;
-    const shapeData = JSON.parse(jsonStr);
-    const rect = canvas.getElement().getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    addShapeAtPosition(shapeData, x, y);
-});
-
-canvas.on('object:rotating', function (options) {
-    const target = options.target;
-    if (target) {
-        let angle = target.angle;
-        const snapAngle = 45;
-        const snappedAngle = Math.round(angle / snapAngle) * snapAngle;
-        target.set('angle', snappedAngle);
+    if (jsonStr) {
+        const data = JSON.parse(jsonStr);
+        const rect = canvas.getElement().getBoundingClientRect();
+        addShapeAtPosition(data, e.clientX - rect.left, e.clientY - rect.top);
     }
 });
 
-/* =========================================
-   SVG 로드 및 캔버스 추가
-   ========================================= */
+/* 🌟 [핵심 수정] SVG 크기 자동 조절 (Huge Box 버그 해결) */
 function addShapeAtPosition(data, x, y) {
     const svgPath = `assets/${data.type}.svg`;
 
     fabric.loadSVGFromURL(svgPath, (objects, options) => {
         const loadedObj = fabric.util.groupSVGElements(objects, options);
-
         applyColorToSvg(loadedObj, data.color);
 
+        // 크기 정규화 (무조건 적당한 크기 100px로 줄임)
+        const originalWidth = loadedObj.width || 100;
+        const originalHeight = loadedObj.height || 100;
+        const targetSize = 100;
+        const scaleFactor = targetSize / Math.max(originalWidth, originalHeight);
+
         loadedObj.set({
-            left: x, top: y, originX: 'center', originY: 'center', angle: 0, opacity: 0.9,
+            left: x, top: y, originX: 'center', originY: 'center',
             hasControls: true, hasBorders: true,
-            lockScalingX: true, lockScalingY: true, lockRotation: false, lockUniScaling: true,
+            lockScalingX: false, lockScalingY: false, lockRotation: false, lockUniScaling: true,
+            
+            // 컨트롤 디자인
+            cornerColor: 'rgba(0,0,0,0.5)', cornerStrokeColor: '#fff', borderColor: '#333',
+            cornerSize: 12, padding: 5, transparentCorners: false,
+            
             perPixelTargetFind: true
         });
 
         loadedObj.set('componentType', data.componentType);
         loadedObj.set('type', data.type);
-
-        // 🌟 [수정 2] 조각 생성 시, 해당 조각의 색상을 프로퍼티로 저장
         loadedObj.set('userColor', data.color);
 
         canvas.add(loadedObj);
         canvas.bringToFront(loadedObj);
-
+        canvas.setActiveObject(loadedObj);
+        
+        // 등장 효과 (계산된 스케일까지만 커짐)
         loadedObj.set({ scaleX: 0, scaleY: 0 });
-        loadedObj.animate('scaleX', 0.5, { duration: 300, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
-        loadedObj.animate('scaleY', 0.5, { duration: 300, easing: fabric.util.ease.easeOutBack });
+        loadedObj.animate('scaleX', scaleFactor, { duration: 400, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
+        loadedObj.animate('scaleY', scaleFactor, { duration: 400, easing: fabric.util.ease.easeOutBack });
     });
 }
 
-canvas.on('mouse:down', function (options) {
-    if (options.target) {
-        canvas.bringToFront(options.target);
+/* --- 인스타그램 스타일 삭제 (휴지통) --- */
+const deleteZone = document.getElementById('delete-zone');
+
+canvas.on('object:moving', (e) => {
+    const obj = e.target;
+    if (!obj) return;
+
+    deleteZone.classList.add('visible');
+    deleteZone.classList.remove('hidden');
+
+    if (obj.top > canvas.height * 0.85) {
+        deleteZone.classList.add('delete-active');
+        obj.set('opacity', 0.5);
+    } else {
+        deleteZone.classList.remove('delete-active');
+        obj.set('opacity', 1);
     }
 });
 
-/* =========================================
-   서버로 꽃 데이터 전송 (버그 수정됨)
-   ========================================= */
+canvas.on('mouse:up', () => {
+    const obj = canvas.getActiveObject();
+    deleteZone.classList.remove('visible');
+    deleteZone.classList.remove('delete-active');
+
+    if (obj && obj.top > canvas.height * 0.85) {
+        canvas.remove(obj);
+        canvas.discardActiveObject();
+    } else if (obj) {
+        obj.set('opacity', 1);
+    }
+    canvas.renderAll();
+});
+
+canvas.on('object:scaling', () => deleteZone.classList.remove('visible'));
+canvas.on('object:rotating', (opt) => {
+    if (opt.target) {
+        // 45도 스냅
+        opt.target.angle = Math.round(opt.target.angle / 45) * 45;
+        deleteZone.classList.remove('visible');
+    }
+});
+
+/* --- 서버 전송 --- */
 function sendFlower() {
     const username = document.getElementById('username').value;
     const location = document.getElementById('district-select').value;
     const objects = canvas.getObjects();
 
-    if (objects.length === 0) { alert("조각을 드래그해서 꽃을 만들어주세요!"); return; }
+    if (objects.length === 0) { alert("조각을 하나 이상 배치해주세요!"); return; }
 
     const flowerData = {
         userName: username,
         location: location,
         shapes: objects.map((obj, index) => ({
             type: obj.get('type') || 'unknown',
-
-            // 🌟 [수정 3] 마지막 선택 색상(currentSelectedColor)이 아니라
-            // 각 조각이 기억하고 있는 색상(userColor)을 보냄
             color: obj.get('userColor') || currentSelectedColor,
-
             x: obj.left, y: obj.top,
-            scaleX: obj.scaleX,
-            scaleY: obj.scaleY,
+            scaleX: obj.scaleX, scaleY: obj.scaleY,
             rotation: obj.angle,
             layerOrder: index,
-            componentType: obj.get('componentType') || 'Unknown'
+            componentType: obj.get('componentType') || 'Flower'
         }))
     };
 
@@ -322,145 +298,4 @@ function sendFlower() {
 
     document.getElementById('step-2').classList.add('hidden');
     document.getElementById('step-3').classList.remove('hidden');
-
 }
-
-/* =========================================
-   [디버깅용] 랜덤 꽃 자동 생성 버튼 & 로직
-   ========================================= */
-function createDebugButton() {
-    // 중복 생성 방지
-    if (document.getElementById('debug-btn')) return;
-
-    const btn = document.createElement('button');
-    btn.id = 'debug-btn';
-    btn.innerText = "🎲 자동 완성 (Full)";
-    btn.style.position = "fixed";
-    btn.style.bottom = "20px";
-    btn.style.right = "20px";
-    btn.style.zIndex = "9999";
-    btn.style.padding = "15px 20px";
-    btn.style.fontSize = "16px";
-    btn.style.fontWeight = "bold";
-    btn.style.backgroundColor = "#20bf6b"; // 초록색으로 변경
-    btn.style.color = "white";
-    btn.style.border = "none";
-    btn.style.borderRadius = "30px";
-    btn.style.boxShadow = "0 4px 6px rgba(0,0,0,0.2)";
-    btn.style.cursor = "pointer";
-
-    btn.onclick = generateRandomFlowerFull;
-    document.body.appendChild(btn);
-}
-
-// 2. [핵심] Step 1부터 Step 2 꽃 생성까지 한방에 처리
-async function generateRandomFlowerFull() {
-
-    // --- [단계 1] Step 1 화면이라면 이름/동네 자동 선택 ---
-    const step1 = document.getElementById('step-1');
-    if (!step1.classList.contains('hidden')) {
-        console.log("🛠️ Step 1 자동 패스 중...");
-
-        // 1. 이름 랜덤 입력
-        const randomNames = ["철수", "영희", "User", "Tester", "Bot"];
-        const randomNum = Math.floor(Math.random() * 1000);
-        const randName = randomNames[Math.floor(Math.random() * randomNames.length)] + "_" + randomNum;
-        document.getElementById('username').value = randName;
-
-        // 2. 동네 랜덤 선택
-        const districtSelect = document.getElementById('district-select');
-        const keys = Object.keys(districtShapes);
-        // 'otherarea' 같은 게 나올 수 있으니 랜덤 픽
-        const randomKey = keys[Math.floor(Math.random() * keys.length)];
-        districtSelect.value = randomKey;
-
-        // 3. 다음 단계로 이동 (goToStep2는 async 함수이므로 await)
-        await goToStep2();
-    }
-
-    // --- [단계 2] 캔버스 초기화 및 랜덤 꽃 그리기 ---
-    canvas.clear();
-    canvas.backgroundColor = '#ffffff';
-
-    const districtSelect = document.getElementById('district-select');
-    const district = districtSelect.value;
-    const availableShapes = districtShapes[district];
-
-    if (!availableShapes || availableShapes.length === 0) {
-        console.error("도형 데이터가 없습니다.");
-        return;
-    }
-
-    // 조각 개수 랜덤 (5~8개)
-    const numShapes = Math.floor(Math.random() * 4) + 5;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-
-    for (let i = 0; i < numShapes; i++) {
-        // 랜덤 모양
-        const shapeIndex = Math.floor(Math.random() * availableShapes.length);
-        const shapeName = availableShapes[shapeIndex];
-
-        // 랜덤 색상
-        const randomColor = colorList[Math.floor(Math.random() * colorList.length)];
-
-        // 타입 결정
-        const totalCount = availableShapes.length;
-        const compType = assignComponentType(shapeIndex, totalCount);
-
-        // 위치 랜덤 (중심에서 -60 ~ +60 픽셀)
-        const offsetX = (Math.random() - 0.5) * 120;
-        const offsetY = (Math.random() - 0.5) * 120;
-
-        // 각도 랜덤 (45도 단위)
-        const randomAngle = Math.floor(Math.random() * 8) * 45;
-
-        // 데이터 구성
-        const data = {
-            type: shapeName,
-            color: randomColor,
-            componentType: compType
-        };
-
-        // 조각 추가 실행
-        addShapeAtPosition_Random(data, centerX + offsetX, centerY + offsetY, randomAngle);
-    }
-
-    console.log(`🌸 [${district}] 자동 꽃 생성 완료!`);
-}
-
-// 3. 랜덤 배치를 위한 헬퍼 함수 (회전값 적용)
-function addShapeAtPosition_Random(data, x, y, angle) {
-    const svgPath = `assets/${data.type}.svg`;
-
-    fabric.loadSVGFromURL(svgPath, (objects, options) => {
-        const loadedObj = fabric.util.groupSVGElements(objects, options);
-
-        applyColorToSvg(loadedObj, data.color);
-
-        loadedObj.set({
-            left: x, top: y,
-            originX: 'center', originY: 'center',
-            angle: angle,
-            opacity: 0.9,
-            hasControls: true, hasBorders: true,
-            lockScalingX: true, lockScalingY: true,
-            lockRotation: false, lockUniScaling: true,
-            perPixelTargetFind: true
-        });
-
-        loadedObj.set('componentType', data.componentType);
-        loadedObj.set('type', data.type);
-        loadedObj.set('userColor', data.color);
-
-        canvas.add(loadedObj);
-
-        // 뿅 하고 나타나는 효과
-        loadedObj.set({ scaleX: 0, scaleY: 0 });
-        loadedObj.animate('scaleX', 0.5, { duration: 300, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
-        loadedObj.animate('scaleY', 0.5, { duration: 300, easing: fabric.util.ease.easeOutBack });
-    });
-}
-
-// 페이지 로드 시 버튼 생성
-createDebugButton();

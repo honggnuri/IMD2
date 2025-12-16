@@ -11,8 +11,8 @@
 <body>
     <div class="container">
         <div id="step-1">
-            <h1>환영합니다!</h1>
-            <p>이름과 사는 곳을 알려주세요.</p>
+            <h1>환영합니다! 🌸</h1>
+            <p>세종시에 피울 꽃의 이름과 위치를 정해주세요.</p>
             <div class="input-section">
                 <input type="text" id="username" placeholder="이름 입력">
                 <select id="district-select">
@@ -22,8 +22,8 @@
                     <option value="areum">아름동</option>
                     <option value="hamildong">한솔동 (Hamildong)</option>
                     <option value="naseongdong">나성동</option>
-                    <option value="bangok_jiphyeon">반곡/집현동</option>
-                    <option value="jochiwon">조치원</option>
+                    <option value="bangok_jiphyeon">반곡·집현동</option>
+                    <option value="jochiwon">조치원읍</option>
                     <option value="jeonui_myeon">전의면</option>
                     <option value="yeonseomyeon">연서면</option>
                     <option value="bugangmyeon">부강면</option>
@@ -39,37 +39,37 @@
 
         <div id="step-2" class="hidden">
             <h2 id="step-2-title" class="step-title">꽃 만들기</h2>
-            <p class="guide-text">1. 색을 고르고 조각을 드래그하세요! (캔버스에서 크기 조절/회전 가능)</p>
+            <p class="guide-text">🎨 색을 고르고 조각을 배치하세요.<br>(조각 클릭: 크기 조절 / 아래로 드래그: 삭제)</p>
             
             <div id="color-palette" class="color-row"></div>
             
             <div id="selection-views">
                 <div id="flower-selection-view">
-                    <h3 class="step-subtitle">꽃잎/중심 조각 선택</h3>
+                    <h3 class="step-subtitle">🌸 모든 조각 선택</h3>
                     <div id="flower-palette-container" class="palette"></div>
-                    <button class="next-btn" onclick="goToLeafSelection()">다음: 잎 조각 선택하기</button>
-                </div>
-
-                <div id="leaf-selection-view" class="hidden">
-                    <h3 class="step-subtitle">잎 조각 선택</h3>
-                    <div id="leaf-palette-container" class="palette"></div>
-                    <button class="prev-btn" onclick="goToFlowerSelection()">이전: 꽃잎 조각</button>
-                    <button class="send-btn" onclick="sendFlower()">전송하기</button>
+                    
+                    <button class="send-btn" onclick="sendFlower()">꽃 심기 완료!</button>
                 </div>
             </div>
             
             <div class="canvas-wrapper">
-                <canvas id="c" width="500" height="500"></canvas>
+                <canvas id="c"></canvas>
+                
+                <div id="delete-zone" class="hidden">
+                    <span class="trash-icon">🗑️</span>
+                    <span class="trash-text">드래그해서 삭제</span>
+                </div>
             </div>
         </div>
 
         <div id="step-3" class="hidden">
-            <h1>전송 완료!</h1>
+            <h1>전송 완료! 🌺</h1>
             <p>대형 화면을 확인해보세요.</p>
-            <p>당신의 꽃이 피어났습니다.</p>
-            <button onclick="location.reload()">처음으로</button>
+            <p>당신의 꽃이 세종시 지도에 피어났습니다.</p>
+            <button class="next-btn" onclick="location.reload()">처음으로</button>
         </div>
     </div>
+    
     <script src="script.js"></script>
 </body>
 </html>
