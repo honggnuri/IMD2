@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sejong Bloom - 꽃 만들기</title>
+    <link rel="stylesheet" href="styleflower.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+<body>
+    <div class="step2box">
+        <div class="img_container">
+            <img src="/public/assets/phone10.jpg" alt="background">
+        </div>
+        <div class="step2-container">
+            <div class="step2-header">
+                <p class="step-subtitle" id="step2-sub-msg">로딩 중...</p>
+                <h2 class="main-question">꽃은 어떻게 생겼을까?</h2>
+                <p class="step-subtitle-guide"> 모양과 색을 골라 꽃을 만들어보자! </p>
+            </div>
+
+            <div class="controls-wrapper">
+                <div class="palette-row">
+                    <span class="control-label" style="font-family: 'UhBeeZIGLE';">모양 (Shape)</span>
+                    <div id="flower-palette-container" class="scroll-palette">
+                    </div>
+                </div>
+
+                <div class="palette-row">
+                    <span class="control-label" style="font-family: 'UhBeeZIGLE';">색상 (Color)</span>
+                    <div id="color-palette" class="scroll-palette">
+                    </div>
+                </div>
+            </div>
+
+            <div class="canvas-wrapper">
+                <canvas id="c"></canvas>
+                <div id="delete-zone" class="hidden">
+                    <div class="trash-icon-bg"></div>
+                </div>
+            </div>
+
+            <button class="finish-btn" onclick="sendFlower()">완성하기</button>
+        </div>
+    </div>
+
+    <script>
+        /* === JS는 그대로 500px 변환 로직 포함 === */
+        const SERVER_URL = "http://15.134.86.182:3000";
+        let socket;
+
+        try {
+            socket = io(SERVER_URL);
+        } catch (e) { console.error(e); }
+
+        const storedName = sessionStorage.getItem('userName') || "테스트";
+        const storedDistrict = sessionStorage.getItem('userDistrict') || "dodam";
+
+        const districtNames = {
+            'eojindong': '어진동', 'dodam': '도담동', 'areum': '아름동',
+            'hamildong': '한솔동', 'naseongdong': '나성동', 'bangok_jiphyeon': '반곡·집현동',
+            'jochiwon': '조치원읍', 'jeonui_myeon': '전의면', 'yeonseomyeon': '연서면',
+            'bugangmyeon': '부강면', 'geumnammyeon': '금남면', 'yeongimyeon': '연기면',
+            'janggunmyeon': '장군면', 'yeondongmyeon': '연동면', 'otherarea': '기타 지역'
+        };
+
+        const districtKr = districtNames[storedDistrict] || "세종시";
+        document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
+
+        // 색상 및 모양 데이터
+        const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7', '#FFD43B', '#69DB7C', '#FCC2D7'];
+
+        const allShapes = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11'];
+        const districtShapes = {
+            'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
+            'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
+        };
+        const myShapes = districtShapes[storedDistrict] || allShapes;
+
+        let currentSelectedColor = colorList[0];
+
+        const canvas = new fabric.Canvas('c', {
+            preserveObjectStacking: true
+        });
+        canvas.backgroundColor = 'transparent';
+
+        window.onload = function () {
+            resizeCanvas();
+            initColorPalette();
+            generatePalette(myShapes);
+        };
+
+        window.addEventListener('resize', resizeCanvas);
+
+        /* 리사이징: CSS 비율에 맞춤 */
+        function resizeCanvas() {
+            const wrapper = document.querySelector('.canvas-wrapper');
+            if (wrapper) {
+                const size = wrapper.clientWidth;
+                canvas.setWidth(size);
+                canvas.setHeight(size);
+                canvas.renderAll();
+            }
+        }
+
+        function initColorPalette() {
+            const container = document.getElementById('color-palette');
+            container.innerHTML = '';
+            colorList.forEach((color, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'color-btn';
+                if (idx === 0) btn.classList.add('active');
+                btn.style.backgroundColor = color;
+                btn.onclick = () => selectColor(btn, color);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectColor(btn, color) {
+            currentSelectedColor = color;
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                applyColor(activeObj, color);
+                canvas.renderAll();
+            }
+            updateShapeButtons(color);
+        }
+
+        async function generatePalette(shapes) {
+            const container = document.getElementById('flower-palette-container');
+            container.innerHTML = '';
+
+            for (let shape of shapes) {
+                // SVG 불러오기: public/assets/... 경로 주의
+                const filePath = `assets/${shape}.svg`;
+
+                try {
+                    const res = await fetch(filePath);
+                    if (!res.ok) throw new Error('SVG Load Fail');
+                    let svgText = await res.text();
+
+                    const btn = document.createElement('div');
+                    btn.className = 'shape-btn';
+                    btn.dataset.svg = svgText;
+                    btn.dataset.type = shape;
+                    btn.innerHTML = svgText.replace(/fill="[^"]*"/g, `fill="${currentSelectedColor}"`);
+
+                    btn.onclick = () => addShapeToCanvas(shape, currentSelectedColor);
+                    container.appendChild(btn);
+                } catch (e) {
+                    console.warn(`[Shape Error] ${shape}:`, e);
+                }
+            }
+        }
+
+        function updateShapeButtons(color) {
+            document.querySelectorAll('.shape-btn').forEach(btn => {
+                const svg = btn.dataset.svg;
+                if (svg) btn.innerHTML = svg.replace(/fill="[^"]*"/g, `fill="${color}"`);
+            });
+        }
+
+        function addShapeToCanvas(type, color) {
+            fabric.loadSVGFromURL(`assets/${type}.svg`, (objects, options) => {
+                const obj = fabric.util.groupSVGElements(objects, options);
+                applyColor(obj, color);
+
+                const canvasWidth = canvas.getWidth();
+                const initialScale = (canvasWidth * 0.3) / Math.max(obj.width, obj.height);
+                const center = canvas.getCenter();
+
+                obj.set({
+                    left: center.left, top: center.top,
+                    originX: 'center', originY: 'center',
+                    scaleX: 0, scaleY: 0,
+                    cornerColor: 'rgba(0,0,0,0.5)', transparentCorners: false
+                });
+                obj.userColor = color;
+                obj.type = type;
+
+                canvas.add(obj);
+                canvas.setActiveObject(obj);
+
+                obj.animate('scaleX', initialScale, { duration: 400, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
+                obj.animate('scaleY', initialScale, { duration: 400, easing: fabric.util.ease.easeOutBack });
+            });
+        }
+
+        function applyColor(obj, color) {
+            obj.userColor = color;
+            if (obj.isType('group')) {
+                obj.getObjects().forEach(o => { if (o.fill !== 'none') o.set('fill', color); });
+            } else { obj.set('fill', color); }
+        }
+
+        const deleteZone = document.getElementById('delete-zone');
+
+        canvas.on('object:moving', (e) => {
+            deleteZone.classList.remove('hidden');
+            if (e.target.top > canvas.getHeight() * 0.8) {
+                deleteZone.classList.add('delete-active');
+                e.target.opacity = 0.5;
+            } else {
+                deleteZone.classList.remove('delete-active');
+                e.target.opacity = 1;
+            }
+        });
+
+        canvas.on('mouse:up', () => {
+            const obj = canvas.getActiveObject();
+            deleteZone.classList.add('hidden');
+            deleteZone.classList.remove('delete-active');
+
+            if (obj && obj.top > canvas.getHeight() * 0.8) {
+                canvas.remove(obj);
+                canvas.discardActiveObject();
+                canvas.renderAll();
+            }
+        });
+
+        /* 유니티 전송 로직 (500px 기준) */
+        function sendFlower() {
+            const objects = canvas.getObjects();
+            if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
+
+            const UNITY_CANVAS_SIZE = 500;
+            const currentSize = canvas.getWidth();
+            const ratio = UNITY_CANVAS_SIZE / currentSize;
+
+            const shapeDataList = objects.map((o, index) => {
+                return {
+                    type: o.type,
+                    color: o.userColor,
+                    x: o.left * ratio,
+                    y: o.top * ratio,
+                    scaleX: o.scaleX * ratio,
+                    scaleY: o.scaleY * ratio,
+                    rotation: o.angle,
+                    layerOrder: index
+                };
+            });
+
+            const data = {
+                userName: storedName,
+                location: storedDistrict,
+                shapes: shapeDataList
+            };
+
+            if (socket && socket.connected) {
+                socket.emit("submit_flower", data);
+                console.log("Sent:", data);
+            } else {
+                // socket이 없어도 알림은 뜨게
+                console.warn("Socket not connected");
+            }
+
+            alert("꽃 심기 완료! \n첫 화면으로 돌아갑니다.");
+            sessionStorage.clear();
+            // [핵심] 8페이지로 이동
+            window.location.href = 'page8.html';
+        }
+        
+    </script>
+</body>
+
+</html>

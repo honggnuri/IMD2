@@ -1,0 +1,5 @@
+/* 어비폰트 - 웹폰트 설정영역 */
+@font-face {font-family: 'UhBeeZIGLE';src: url('UhBeeZIGLE.eot');}
+@font-face {font-family: 'UhBeeZIGLE';src: url('UhBeeZIGLE.woff') format('woff');}
+article { font-family: "UhBeeZIGLE", serif;}
+textarea  {font-family: "UhBeeZIGLE", serif; }

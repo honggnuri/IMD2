@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sejong Bloom</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div id="step-1" class="img_container">
+            <img id="main-bg" src="assets/phone07.jpg" alt="Background">
+        </div>
+
+        <div class="input-box">
+            <!-- 이름 입력 -->
+            <div class="input-row" id="row-name">
+                <span class="label-text">내이름은</span>
+                <input
+                    type="text"
+                    class="name-input"
+                    id="username"
+                    placeholder="이름을 적어주세요"
+                    autocomplete="off"
+                >
+            </div>
+
+            <!-- 동네 선택 -->
+            <div class="input-row hidden-row" id="row-district">
+                <select id="district-select" class="district-input">
+                    <option value="" disabled selected>선택해주세요</option>
+                    <option value="eojindong">어진동</option>
+                    <option value="dodam">도담동</option>
+                    <option value="areum">아름동</option>
+                    <option value="hansol">한솔동</option>
+                    <option value="naseongdong">나성동</option>
+                    <option value="bangok_jiphyeon">반곡·집현동</option>
+                    <option value="jochiwon">조치원읍</option>
+                    <option value="jeonui_myeon">전의면</option>
+                    <option value="yeonseomyeon">연서면</option>
+                    <option value="bugangmyeon">부강면</option>
+                    <option value="geumnammyeon">금남면</option>
+                    <option value="yeongimyeon">연기면</option>
+                    <option value="janggunmyeon">장군면</option>
+                    <option value="yeondongmyeon">연동면</option>
+                    <option value="otherarea">기타 지역</option>
+                </select>
+                <span class="suffix-text">여기에 살아!</span>
+            </div>
+        </div>
+
+        <!-- 버튼 -->
+        <button class="start-btn hidden-row" id="make-flower-btn">
+            꽃 만들기
+        </button>
+    </div>
+
+    <script>
+        const usernameInput = document.getElementById('username');
+        const districtRow = document.getElementById('row-district');
+        const districtSelect = document.getElementById('district-select');
+        const makeFlowerBtn = document.getElementById('make-flower-btn');
+        const mainBg = document.getElementById('main-bg');
+
+        // 1️⃣ 이름 입력 시 → 배경 변경 + 동네 선택 노출
+        usernameInput.addEventListener('input', function () {
+            const val = this.value.trim();
+
+            if (val.length > 0) {
+                this.classList.add('filled');
+                mainBg.src = 'assets/phone08.jpg';
+
+                if (districtRow.classList.contains('hidden-row')) {
+                    districtRow.classList.remove('hidden-row');
+                    setTimeout(() => districtRow.classList.add('visible'), 10);
+                }
+            } else {
+                this.classList.remove('filled');
+            }
+        });
+
+        // 2️⃣ 동네 선택 시 → 버튼 노출
+        districtSelect.addEventListener('change', function () {
+            if (this.value) {
+                this.classList.add('filled');
+                makeFlowerBtn.classList.remove('hidden-row');
+                setTimeout(() => makeFlowerBtn.classList.add('visible'), 10);
+            }
+        });
+
+        // 3️⃣ 버튼 클릭 → 정보 저장 → 다음 페이지 이동
+        makeFlowerBtn.addEventListener('click', function () {
+            const name = usernameInput.value.trim();
+            const district = districtSelect.value;
+
+            if (!name || !district) {
+                alert('이름과 동네를 모두 입력해주세요!');
+                return;
+            }
+
+            // ✅ 정보 저장
+            sessionStorage.setItem('userName', name);
+            sessionStorage.setItem('userDistrict', district);
+
+            // 다음 페이지
+            window.location.href = 'page7.html';
+        });
+    </script>
+</body>
+
+</html>

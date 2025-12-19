@@ -1,0 +1,354 @@
+@font-face {
+    font-family: 'UhBeeZIGLE';
+    src: url('https://gcore.jsdelivr.net/gh/projectnoonnu/noonfonts_five@.2.0/UhBeeZIGLE.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-width: 393px;
+    margin: 0;
+    padding: 0;
+    width: 100dvw;
+}
+
+.img_container {
+    width: 100%;
+}
+
+img {
+    width: 100%;
+    display: block;
+    object-position: center calc(50% - 14vh);
+    z-index: 1;
+}
+
+button {
+    width: 90%;
+    white-space: nowrap;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* 숨김/표시 애니메이션 (공통 유틸리티) */
+.hidden-row {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.visible {
+    display: flex !important;
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.5s ease;
+}
+
+button.visible {
+    display: block !important;
+}
+
+/* 버튼 스타일 */
+.next-btn {
+    position: absolute;
+    bottom: 8vh;
+    /* 핵심 */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    font-size: 18px;
+    color: #333;
+    padding: 6% 27%;
+    border-radius: 8px;
+    background: #D0F56A;
+    box-shadow: 0 -4px 16px 0 rgba(255, 255, 255, 0.50) inset, 0 4px 16px 0 rgba(255, 255, 255, 0.50) inset;
+}
+
+.step2box {
+    width: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.step2-container {
+    width: 100%;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+
+    padding-top: 80px;
+    /* 고정 높이 제거, 최소 높이 설정 */
+
+    align-items: center;
+
+}
+
+.step2-header {
+    font-family: 'UhBeeZIGLE';
+    margin-top: 10px;
+    margin-bottom: 10px;
+    margin-left: -6%;
+    text-align: left;
+    width: 80%;
+
+}
+
+.step-subtitle-guide {
+    color: #847F79;
+    font-size: 1.4em;
+    margin: 2px;
+}
+
+.step-subtitle {
+    color: #585147;
+    font-size: 2em;
+    margin-bottom: 5px;
+}
+
+.main-question {
+    font-size: 2.6rem;
+    color: #585147;
+    font-weight: normal;
+    margin-bottom: 24px;
+}
+
+.controls-wrapper {
+    width: 100%;
+    padding: 0% 0.5%;
+}
+
+.palette-row {
+    display: flex;
+    width: 100%;
+    padding: 0% 6%;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 12px;
+
+}
+
+.control-label {
+    font-size: 1.1rem;
+    color: #666;
+    margin-left: 5px;
+}
+
+/* ★ 핵심: 가로 스크롤 설정 ★ */
+.scroll-palette {
+    display: flex;
+    height: 64px;
+    overflow-x: auto;
+    /* 가로 스크롤 허용 */
+    gap: 8px;
+    /* 아이템 사이 간격 */
+    padding: 0px 30px;
+    /* [핵심] 화면 양옆 끝까지 뚫어주는 코드 */
+    margin-left: -30px;
+    margin-right: -30px;
+
+    /* 스크롤바 안 보이게 숨기기 */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scroll-palette::-webkit-scrollbar {
+    display: none;
+}
+
+/* 모양 버튼 */
+.shape-btn {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    /* 찌그러짐 방지 */
+    border: 1.5px solid #ffffff;
+    border-radius: 8px;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.shape-btn svg {
+    width: 40px;
+    height: 40px;
+}
+
+/* 색상 버튼 */
+.color-btn {
+
+    margin: 4px 0px;
+    width: 45px;
+    height: 45px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.color-btn.active {
+    border: 3px solid #ffffff;
+    transform: scale(1.1);
+
+}
+
+
+/* 캔버스 영역 */
+.canvas-wrapper {
+    position: relative;
+    margin: 12px 0px;
+    overflow: hidden;
+    width: 96%;
+    /* 100%로 변경하여 꽉 채움 */
+    box-sizing: border-box;
+    /* 패딩 줘도 너비 안 늘어나게 */
+    height: auto;
+    aspect-ratio: 1 / 1;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#c {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 40px 0 rgba(255, 255, 255, 1) inset, 0 4px 40px 0 rgba(255, 255, 255, 1) inset;
+    border-radius: 16px;
+    border: #DDE7E6 1px solid;
+}
+
+/* 1. 휴지통 컨테이너 (흰색 동그라미) */
+#delete-zone {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 60px;
+
+    background-color: rgba(218, 225, 201, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    /* 아이폰(Safari) 호환성용 */
+
+    /* 기존 테두리나 그림자 */
+    border-radius: 50%;
+    border: 1px solid #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 40px 0 rgba(255, 255, 255, 1) inset, 0 4px 40px 0 rgba(255, 255, 255, 1) inset;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    /* 캔버스 위에 오도록 높게 설정 */
+    transition: all 0.3s ease;
+}
+
+/* 2. 내부 아이콘 (여기에 이미지를 넣습니다) */
+#delete-zone .trash-icon-bg {
+    width: 30px;
+    /* 너비 필수 */
+    height: 30px;
+    /* 높이 필수 */
+
+    /* 요청하신 경로 그대로 적용 */
+    background-image: url("/public/assets/Trash.svg");
+
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    /* div 크기에 딱 맞게 조절 */
+}
+
+/* 3. 숨김 상태 (평소에는 안 보임) */
+#delete-zone.hidden {
+    opacity: 0;
+    pointer-events: none;
+    bottom: 10px;
+}
+
+/* 4. 활성 상태 (드래그 시 빨개짐) */
+#delete-zone.delete-active {
+    background-color: rgba(219, 248, 152, 0.3);
+    box-shadow: 0 4px 8px 0 rgba(255, 255, 255, 1) inset, 0 4px 8px 0 rgba(255, 255, 255, 1) inset;
+    transform: translateX(-50%) scale(1.2);
+}
+
+/* 완료 버튼 */
+.finish-btn {
+    /* 핵심 */
+    margin-top: 24px;
+    margin-bottom: 120px;
+    left: 50%;
+    z-index: 10;
+    font-size: 18px;
+    color: #333;
+    padding: 6% 27%;
+    border-radius: 8px;
+    background: #D0F56A;
+    box-shadow: 0 -4px 16px 0 rgba(255, 255, 255, 0.50) inset, 0 4px 16px 0 rgba(255, 255, 255, 0.50) inset;
+}
+
+@media (min-width: 651px) {
+
+    body {
+        /* 화면 중앙 정렬 */
+        display: flex;
+        justify-content: center;
+        background-color: #f0f0f0;
+        /* 배경은 연한 회색 (컨텐츠 강조용) */
+    }
+
+    .step2box {
+        /* 핵심: 높이를 화면에 딱 맞춤 (100%) */
+        height: 100vh;
+        max-height: none;
+        /* 제한 해제 */
+
+        /* 핵심: 모바일 비율(9:19.5) 유지하면서 너비 자동 조절 */
+        aspect-ratio: 9 / 19.5;
+        width: auto;
+        /* 스마트폰 테두리/모양 제거 -> 깔끔한 박스 형태 */
+        border: none;
+        border-radius: 0;
+        /* 배경 흰색 & 그림자만 살짝 (화면 구분용) */
+        background-color: white;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+        position: relative;
+    }
+
+    /* 꽃 만들기 페이지 스크롤바 숨김 처리 */
+    .step2-container {
+        overflow-y: auto;
+
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .step2-container::-webkit-scrollbar {
+        display: none;
+    }
+}
