@@ -28,4 +28,4 @@ jobs:
             git pull origin main
 
             # 3. PM2를 사용하여 서버를 부드럽게 리로드합니다.
-            pm2 reload BloomSocket
+            pm2 reload server
