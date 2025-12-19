@@ -275,7 +275,7 @@ button.visible {
     /* 높이 필수 */
 
     /* 요청하신 경로 그대로 적용 */
-    background-image: url("/public/assets/Trash.svg");
+    background-image: url("/assets/Trash.svg");
 
     background-repeat: no-repeat;
     background-position: center;
