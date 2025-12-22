@@ -141,6 +141,11 @@ select {
     box-sizing: border-box;
 }
 
+.some-element {
+    -webkit-appearance: none; /* 크롬, 사파리 구버전용 */
+       -moz-appearance: none; /* 파이어폭스 구버전용 */
+            appearance: none; /* ⭐ 표준 속성 (이걸 추가해야 합니다) */
+}
 .name-input,
 .district-input {
     flex: 1;
@@ -156,7 +161,7 @@ select {
     color: #819A97;
     text-align: center;
     transition: background-color 0.3s ease;
-    -webkit-appearance: none;
+
 }
 
 .name-input.filled,
@@ -234,7 +239,7 @@ select.district-input {
     }
 }
 
-@media ((min-width: 768px) and (orientation: portrait)) {
+@media (min-width: 768px) and (orientation: portrait) {
 
     body {
         /* 화면 중앙 정렬 */
