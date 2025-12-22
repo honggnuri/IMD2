@@ -3,20 +3,328 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sejong Bloom</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Sejong Bloom - 물 주기</title>
+
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="styleflowergrow.css">
+
 </head>
+
 <body>
+
     <div class="container">
-        <div id="step-1" class="img_container">
-        <img src="/assets/phone11.jpg"> </div>
-        <button class="next-btn" onclick="location.href='/index.html'">우와</button>
+        <div class="bg_container">
+            <img src="/public/assets/phone11.jpg" alt="background">
+        </div>
+
+        <div id="watering-canvas-container"></div>
+
+        <button id="finish-btn" class="next-btn hidden" onclick="location.href='/page9.html'">
+            다 자랐어요! (다음으로)
+        </button>
     </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script>
+        function sendAndMove() {
+            const btn = document.getElementById('finish-btn');
+
+            // 중복 클릭 방지
+            btn.disabled = true;
+            btn.innerText = "전송 중...";
+
+            const storedData = sessionStorage.getItem('flowerData');
+
+            if (!storedData) {
+                alert("저장된 꽃 데이터가 없습니다!");
+                window.location.href = 'page9.html';
+                return;
+            }
+
+            try {
+                const data = JSON.parse(storedData);
+
+                // [서버 주소] 본인 환경에 맞게 확인 (현재 코드 기준)
+                const socket = io("http://15.134.86.182:3000");
+
+                // 서버로 데이터 전송 ('submit_flower' 이벤트)
+                socket.emit("submit_flower", data);
+                console.log("유니티로 데이터 전송함:", data);
+
+                // 전송 후 잠시 대기했다가 이동 (전송 보장용)
+                setTimeout(() => {
+                    alert("세종시 정원에 꽃을 심었습니다!");
+                    window.location.href = 'page9.html';
+                }, 500);
+
+            } catch (err) {
+                console.error("전송 실패:", err);
+                alert("전송 중 오류가 발생했습니다. 다음 페이지로 넘어갑니다.");
+                window.location.href = 'page9.html';
+            }
+        }
+    </script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DragControls } from 'three/addons/controls/DragControls.js';
+
+        // --- 0. 기본 씬 설정 ---
+        const container = document.querySelector('.container');
+        let width = container.clientWidth;
+        let height = container.clientHeight;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+        camera.position.set(0, 1, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setClearColor(0x000000, 0);
+        document.getElementById('watering-canvas-container').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+
+        // --- 1. 꽃 데이터 불러오기 ---
+        const savedDataString = sessionStorage.getItem('flowerData');
+        let flowerTexture = null;
+
+        if (savedDataString) {
+            const flowerData = JSON.parse(savedDataString);
+            const imgSrc = flowerData.previewImage || flowerData.image;
+            if (imgSrc) {
+                flowerTexture = new THREE.TextureLoader().load(imgSrc);
+            }
+        }
+
+        let flower;
+        if (flowerTexture) {
+            flower = new THREE.Mesh(
+                new THREE.PlaneGeometry(6, 6),
+                new THREE.MeshBasicMaterial({ map: flowerTexture, transparent: true, side: THREE.DoubleSide })
+            );
+        } else {
+            flower = new THREE.Mesh(
+                new THREE.SphereGeometry(1.5, 32, 32),
+                new THREE.MeshStandardMaterial({ color: 0xff6b6b })
+            );
+        }
+
+        flower.position.set(0, -3, 0);
+        const INITIAL_SCALE = 0.1;
+        flower.scale.set(INITIAL_SCALE, INITIAL_SCALE, INITIAL_SCALE);
+        scene.add(flower);
+
+
+        // --- 2. 물뿌리개 설정 ---
+        let canGroup = new THREE.Group();
+        scene.add(canGroup);
+
+        const spoutHelper = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 8, 8),
+            new THREE.MeshBasicMaterial({ visible: false })
+        );
+        spoutHelper.position.set(1.8, 0.5, 0);
+        canGroup.add(spoutHelper);
+
+        const loader = new GLTFLoader();
+        let isModelReady = false;
+        let isUserDragging = false;
+
+        function getResponsiveParams() {
+            const isMobile = window.innerWidth < 768;
+            if (isMobile) {
+                return { scale: 1.2, posX: 0, posY: 0.8 };
+            } else {
+                return { scale: 1.0, posX: 0, posY: 3.5 };
+            }
+        }
+
+        loader.load('./assets/Watering_Can.glb', (gltf) => {
+            const model = gltf.scene;
+            model.scale.set(0.05, 0.05, 0.05);
+
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({
+                        color: 0xFFD700,
+                        roughness: 0.4,
+                        metalness: 0.3
+                    });
+                }
+            });
+
+            canGroup.add(model);
+
+            const params = getResponsiveParams();
+            canGroup.scale.set(params.scale, params.scale, params.scale);
+            canGroup.position.set(params.posX, params.posY, 0);
+
+            const controls = new DragControls([canGroup], camera, renderer.domElement);
+            controls.transformGroup = true;
+
+            controls.addEventListener('dragstart', () => { isUserDragging = true; });
+            controls.addEventListener('dragend', () => { isUserDragging = false; });
+
+            isModelReady = true;
+        });
+
+
+        // --- 3. 파티클 ---
+        const particleCount = 400;
+        const geom = new THREE.BufferGeometry();
+        const pos = new Float32Array(particleCount * 3);
+        const vel = new Float32Array(particleCount);
+
+        for (let i = 0; i < particleCount; i++) {
+            pos[i * 3 + 1] = -500;
+            vel[i] = -0.1 - Math.random() * 0.2;
+        }
+        geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+        const pSystem = new THREE.Points(geom, new THREE.PointsMaterial({
+            color: 0x4fa3ff, size: 0.15, transparent: true, opacity: 0.8
+        }));
+        pSystem.frustumCulled = false;
+        pSystem.visible = false;
+        scene.add(pSystem);
+
+
+        // --- 4. 애니메이션 ---
+        let targetRotZ = 0;
+        let targetRotY = 0;
+        let isWatering = false;
+        let wateringFrames = 0;
+
+        const WATERING_SECONDS = 3;
+        const REQUIRED_FRAMES = WATERING_SECONDS * 60;
+        const MAX_FLOWER_SCALE = 1.0;
+
+        const canPos = new THREE.Vector3();
+        const flowerPos = new THREE.Vector3();
+        const spoutWorldPos = new THREE.Vector3();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!canGroup || !isModelReady) return;
+
+            canGroup.getWorldPosition(canPos);
+            flower.getWorldPosition(flowerPos);
+            spoutHelper.getWorldPosition(spoutWorldPos);
+
+            const dist = canPos.distanceTo(flowerPos);
+            const isMobile = window.innerWidth < 768;
+            const activationDist = isMobile ? 3.8 : 4.5;
+
+            if (isUserDragging && dist < activationDist) {
+                isWatering = true;
+                targetRotZ = -Math.PI / 4;
+            } else {
+                isWatering = false;
+                targetRotZ = 0;
+            }
+
+            if (canPos.x > flowerPos.x) targetRotY = -Math.PI;
+            else targetRotY = 0;
+
+            canGroup.rotation.z = THREE.MathUtils.lerp(canGroup.rotation.z, targetRotZ, 0.1);
+            canGroup.rotation.y = THREE.MathUtils.lerp(canGroup.rotation.y, targetRotY, 0.1);
+
+            const isActuallyWatering = isWatering && canGroup.rotation.z < -0.3;
+            pSystem.visible = isActuallyWatering;
+
+            if (isActuallyWatering) {
+                wateringFrames++;
+
+                const progress = Math.min(wateringFrames / REQUIRED_FRAMES, 1.0);
+                const currentScale = THREE.MathUtils.lerp(INITIAL_SCALE, MAX_FLOWER_SCALE, progress);
+
+                flower.scale.set(currentScale, currentScale, currentScale);
+
+                if (progress < 1.0) {
+                    flower.rotation.z = Math.sin(wateringFrames * 0.1) * 0.05;
+                } else {
+                    flower.rotation.z = 0;
+                }
+
+                if (wateringFrames >= REQUIRED_FRAMES) {
+                    finishWatering();
+                    return;
+                }
+            }
+
+            if (isActuallyWatering) {
+                const arr = geom.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    if (arr[i * 3 + 1] < -2) {
+                        arr[i * 3] = spoutWorldPos.x + (Math.random() - 0.5) * 0.2;
+                        arr[i * 3 + 1] = spoutWorldPos.y;
+                        arr[i * 3 + 2] = spoutWorldPos.z + (Math.random() - 0.5) * 0.2;
+                    }
+                    arr[i * 3 + 1] += vel[i];
+                }
+                geom.attributes.position.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+
+        // --- 5. 시각적 완료 처리 (서버 전송은 버튼 클릭 시) ---
+        let isFinished = false;
+        function finishWatering() {
+            if (isFinished) return;
+            isFinished = true;
+
+            if (canGroup) {
+                scene.remove(canGroup);
+                canGroup = null;
+            }
+            scene.remove(pSystem);
+            renderer.render(scene, camera);
+
+            // 버튼 표시
+            const btn = document.getElementById('finish-btn');
+            if (btn) {
+                btn.classList.remove('hidden');
+                btn.classList.add('visible');
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+    </script>
 </body>
+
 </html>

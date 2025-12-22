@@ -1,0 +1,61 @@
+/* styleflowergrow.css */
+
+/* 1. 배경 이미지 (맨 뒤) */
+.bg_container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; 
+    overflow: hidden;
+}
+
+.bg_container img {
+    width: 100%;
+    display: block;
+    object-position: center calc(50% - 14vh);
+    z-index: 1;
+}
+
+/* 2. 3D 캔버스 (중간) */
+#watering-canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10; 
+    pointer-events: auto; /* 드래그 인식을 위해 필수 */
+}
+
+/* 3. 완료 버튼 (맨 위) */
+/* style.css의 .next-btn 스타일을 기반으로 하되, 초기엔 숨김 */
+#finish-btn {
+    z-index: 100; /* 3D 캔버스보다 위에 있어야 클릭 가능 */
+    transition: opacity 0.5s ease;
+}
+
+/* 유틸리티: 숨김 클래스 */
+.hidden {
+    display: none !important;
+    opacity: 0;
+}
+
+/* 나타날 때 애니메이션용 클래스 */
+.visible {
+    display: block !important;
+    opacity: 1;
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px); /* style.css의 transform(-50%) 고려 */
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}

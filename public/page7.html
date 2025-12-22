@@ -7,15 +7,15 @@
     <title>Sejong Bloom - 꽃 만들기</title>
     <link rel="stylesheet" href="styleflower.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
 
 <body>
     <div class="step2box">
         <div class="img_container">
-            <img src="/assets/phone10.jpg" alt="background">
+            <img src="/public/assets/phone10.jpg" alt="background">
         </div>
         <div class="step2-container">
             <div class="step2-header">
@@ -45,19 +45,12 @@
                 </div>
             </div>
 
-            <button class="finish-btn" onclick="sendFlower()">완성하기</button>
+            <button class="finish-btn" onclick="saveAndMove()">완성하기</button>
         </div>
     </div>
 
     <script>
-        /* === JS는 그대로 500px 변환 로직 포함 === */
-        const SERVER_URL = "http://15.134.86.182:3000";
-        let socket;
-
-        try {
-            socket = io(SERVER_URL);
-        } catch (e) { console.error(e); }
-
+        // 1. 사용자 정보 가져오기
         const storedName = sessionStorage.getItem('userName') || "테스트";
         const storedDistrict = sessionStorage.getItem('userDistrict') || "dodam";
 
@@ -72,18 +65,33 @@
         const districtKr = districtNames[storedDistrict] || "세종시";
         document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
 
-        // 색상 및 모양 데이터
+        // 2. 색상 및 모양 데이터 정의
         const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7', '#FFD43B', '#69DB7C', '#FCC2D7'];
 
-        const allShapes = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11'];
+        const allShapes = ['F1', 'F2', 'F3'];
+        // 지역별 꽃 모양 프리셋 (기존 데이터 유지)
         const districtShapes = {
             'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
             'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
+            'areum': ['F1', 'F2', 'F3', 'F12', 'F13', 'F14', 'F15'],
+            'hamildong': ['F1', 'F2', 'F3', 'F16', 'F17', 'F18', 'F19'],
+            'naseongdong': ['F1', 'F2', 'F3', 'F20', 'F21', 'F22', 'F23'],
+            'bangok_jiphyeon': ['F1', 'F2', 'F3', 'F24', 'F25', 'F26', 'F27'],
+            'jochiwon': ['F1', 'F2', 'F3', 'F28', 'F29', 'F30', 'F31'],
+            'jeonui_myeon': ['F1', 'F2', 'F3', 'F15', 'F30', 'F32', 'F33'],
+            'yeonseomyeon': ['F1', 'F2', 'F3', 'F6', 'F8', 'F13', 'F34'],
+            'bugangmyeon': ['F1', 'F2', 'F3', 'F35', 'F36', 'F37', 'F38'],
+            'geumnammyeon': ['F1', 'F2', 'F3', 'F14', 'F26', 'F36', 'F39'],
+            'yeongimyeon': ['F1', 'F2', 'F3', 'F32', 'F40', 'F41', 'F42'],
+            'janggunmyeon': ['F1', 'F2', 'F3', 'F13', 'F43', 'F44', 'F45'],
+            'yeondongmyeon': ['F1', 'F2', 'F3', 'F22', 'F36', 'F44', 'F46'],
+            'otherarea': ['F1', 'F2', 'F3', 'F11', 'F35', 'F47', 'F48']
         };
-        const myShapes = districtShapes[storedDistrict] || allShapes;
 
+        const myShapes = districtShapes[storedDistrict] || allShapes;
         let currentSelectedColor = colorList[0];
 
+        // 3. 캔버스 초기화
         const canvas = new fabric.Canvas('c', {
             preserveObjectStacking: true
         });
@@ -97,7 +105,6 @@
 
         window.addEventListener('resize', resizeCanvas);
 
-        /* 리사이징: CSS 비율에 맞춤 */
         function resizeCanvas() {
             const wrapper = document.querySelector('.canvas-wrapper');
             if (wrapper) {
@@ -108,6 +115,7 @@
             }
         }
 
+        // 4. 팔레트 생성 로직
         function initColorPalette() {
             const container = document.getElementById('color-palette');
             container.innerHTML = '';
@@ -139,9 +147,7 @@
             container.innerHTML = '';
 
             for (let shape of shapes) {
-                // SVG 불러오기: public/assets/... 경로 주의
-                const filePath = `assets/${shape}.svg`;
-
+                const filePath = `assets/${shape}.svg`; // 경로 주의
                 try {
                     const res = await fetch(filePath);
                     if (!res.ok) throw new Error('SVG Load Fail');
@@ -168,12 +174,14 @@
             });
         }
 
+        // 5. 캔버스 조작 로직 (추가, 색상변경, 삭제)
         function addShapeToCanvas(type, color) {
             fabric.loadSVGFromURL(`assets/${type}.svg`, (objects, options) => {
                 const obj = fabric.util.groupSVGElements(objects, options);
                 applyColor(obj, color);
 
                 const canvasWidth = canvas.getWidth();
+                // 캔버스 크기의 30% 정도로 로드
                 const initialScale = (canvasWidth * 0.3) / Math.max(obj.width, obj.height);
                 const center = canvas.getCenter();
 
@@ -189,6 +197,7 @@
                 canvas.add(obj);
                 canvas.setActiveObject(obj);
 
+                // 팝업 애니메이션
                 obj.animate('scaleX', initialScale, { duration: 400, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
                 obj.animate('scaleY', initialScale, { duration: 400, easing: fabric.util.ease.easeOutBack });
             });
@@ -201,6 +210,7 @@
             } else { obj.set('fill', color); }
         }
 
+        // 삭제 영역 로직
         const deleteZone = document.getElementById('delete-zone');
 
         canvas.on('object:moving', (e) => {
@@ -226,48 +236,85 @@
             }
         });
 
-        /* 유니티 전송 로직 (500px 기준) */
-        function sendFlower() {
+        /* ============================================================
+           [핵심 수정] 저장 후 페이지 8로 이동하는 함수
+           1. 모양 데이터 JSON 생성 (나중에 서버 전송용)
+           2. 캔버스 이미지(PNG) 생성 (다음 페이지 시각화용)
+           3. sessionStorage에 저장 후 이동
+        ============================================================ */
+        function saveAndMove() {
+            // 1. 선택 상자가 저장되는 것 방지
+            canvas.discardActiveObject();
+            canvas.renderAll();
+
             const objects = canvas.getObjects();
             if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
 
-            const UNITY_CANVAS_SIZE = 500;
-            const currentSize = canvas.getWidth();
-            const ratio = UNITY_CANVAS_SIZE / currentSize;
+            // --- [STEP 1] 꽃 뭉치의 전체 영역(Bounding Box) 계산 ---
+            // 꽃들이 뭉쳐있는 곳의 정중앙(Center)을 찾습니다.
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-            const shapeDataList = objects.map((o, index) => {
+            objects.forEach(obj => {
+                const bound = obj.getBoundingRect(); // 회전된 상태까지 고려한 영역
+                if (bound.left < minX) minX = bound.left;
+                if (bound.top < minY) minY = bound.top;
+                if (bound.left + bound.width > maxX) maxX = bound.left + bound.width;
+                if (bound.top + bound.height > maxY) maxY = bound.top + bound.height;
+            });
+
+            const groupCenterX = (minX + maxX) / 2;
+            const groupCenterY = (minY + maxY) / 2;
+
+            // --- [STEP 2] 유니티 전송용 데이터 변환 (상대 좌표) ---
+            // 캔버스 크기에 따른 비율 보정 (웹 500px -> 유니티 5 Unit 정도 비율로 가정)
+            const SCALE_FACTOR = 0.01;
+
+            const unityDataList = objects.map((o, index) => {
+                // 중심점(groupCenter)을 기준으로 얼마나 떨어져 있는지 계산
+                const relativeX = (o.left - groupCenterX) * SCALE_FACTOR;
+                const relativeY = (o.top - groupCenterY) * SCALE_FACTOR * -1; // ★ Y축 반전 (중요)
+
                 return {
-                    type: o.type,
-                    color: o.userColor,
-                    x: o.left * ratio,
-                    y: o.top * ratio,
-                    scaleX: o.scaleX * ratio,
-                    scaleY: o.scaleY * ratio,
-                    rotation: o.angle,
-                    layerOrder: index
+                    prefabName: o.type,       // 유니티 프리팹 이름 (예: "F1")
+                    color: o.userColor,       // 색상
+
+                    // 위치 (꽃 뭉치 중앙 기준)
+                    posX: parseFloat(relativeX.toFixed(4)),
+                    posY: parseFloat(relativeY.toFixed(4)),
+
+                    // 크기
+                    scaleX: parseFloat((o.scaleX * SCALE_FACTOR * 100).toFixed(4)), // 보정값
+                    scaleY: parseFloat((o.scaleY * SCALE_FACTOR * 100).toFixed(4)),
+
+                    // 회전 (웹은 시계방향, 유니티는 반시계방향 -> -부호 붙임)
+                    rotation: -o.angle,
+
+                    // 순서 (나중에 그린게 위에 올라옴)
+                    sortOrder: index
                 };
             });
 
+            // --- [STEP 3] 웹 시각화용 이미지 생성 (Page 8 표시용) ---
+            const flowerImageUrl = canvas.toDataURL({
+                format: 'png',
+                quality: 1.0,
+                multiplier: 2
+            });
+
+            // --- [STEP 4] 저장 ---
             const data = {
                 userName: storedName,
                 location: storedDistrict,
-                shapes: shapeDataList
+                unityData: unityDataList, // 유니티가 쓸 좌표 데이터
+                previewImage: flowerImageUrl // 웹에서 보여줄 이미지
             };
 
-            if (socket && socket.connected) {
-                socket.emit("submit_flower", data);
-                console.log("Sent:", data);
-            } else {
-                // socket이 없어도 알림은 뜨게
-                console.warn("Socket not connected");
-            }
+            sessionStorage.setItem('flowerData', JSON.stringify(data));
+            console.log("유니티 전송용 데이터 생성 완료:", data);
 
-            alert("꽃 심기 완료! \n첫 화면으로 돌아갑니다.");
-            sessionStorage.clear();
-            // [핵심] 8페이지로 이동
-            window.location.href = '/page8.html';
+            alert("꽃 디자인이 저장되었습니다! \n물을 주러 가볼까요?");
+            window.location.href = '/public/page8.html'; // 경로 확인 필요
         }
-        
     </script>
 </body>
 
