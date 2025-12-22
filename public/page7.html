@@ -15,7 +15,7 @@
 <body>
     <div class="step2box">
         <div class="img_container">
-            <img src="/assets/phone10.jpg" alt="background">
+            <img src="/public/assets/phone10.jpg" alt="background">
         </div>
         <div class="step2-container">
             <div class="step2-header">
@@ -227,47 +227,60 @@
         });
 
         /* 유니티 전송 로직 (500px 기준) */
-        function sendFlower() {
-            const objects = canvas.getObjects();
-            if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
+ function sendFlower() {
+    const objects = canvas.getObjects();
+    if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
 
-            const UNITY_CANVAS_SIZE = 500;
-            const currentSize = canvas.getWidth();
-            const ratio = UNITY_CANVAS_SIZE / currentSize;
+    /* 1. [추가] 페이지 8을 위한 이미지 데이터 로컬 저장 (유니티 로직과 무관) */
+    // 유니티 전송과는 별개로, 현재 브라우저 메모리에 이미지만 잠시 저장합니다.
+    const flowerImageData = canvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 2
+    });
+    localStorage.setItem('userFlower', JSON.stringify({ image: flowerImageData }));
 
-            const shapeDataList = objects.map((o, index) => {
-                return {
-                    type: o.type,
-                    color: o.userColor,
-                    x: o.left * ratio,
-                    y: o.top * ratio,
-                    scaleX: o.scaleX * ratio,
-                    scaleY: o.scaleY * ratio,
-                    rotation: o.angle,
-                    layerOrder: index
-                };
-            });
+    /* 2. [기존 유지] 유니티 전송을 위한 데이터 계산 로직 */
+    const UNITY_CANVAS_SIZE = 500;
+    const currentSize = canvas.getWidth();
+    const ratio = UNITY_CANVAS_SIZE / currentSize;
 
-            const data = {
-                userName: storedName,
-                location: storedDistrict,
-                shapes: shapeDataList
-            };
+    const shapeDataList = objects.map((o, index) => {
+        return {
+            type: o.type,
+            color: o.userColor,
+            x: o.left * ratio,
+            y: o.top * ratio,
+            scaleX: o.scaleX * ratio,
+            scaleY: o.scaleY * ratio,
+            rotation: o.angle,
+            layerOrder: index
+        };
+    });
 
-            if (socket && socket.connected) {
-                socket.emit("submit_flower", data);
-                console.log("Sent:", data);
-            } else {
-                // socket이 없어도 알림은 뜨게
-                console.warn("Socket not connected");
-            }
+    const data = {
+        userName: storedName,
+        location: storedDistrict,
+        shapes: shapeDataList
+    };
 
-            alert("꽃 심기 완료! \n첫 화면으로 돌아갑니다.");
-            sessionStorage.clear();
-            // [핵심] 8페이지로 이동
-            window.location.href = '/page8.html';
-        }
-        
+    /* 3. [기존 유지] 서버(유니티)로 데이터 전송 */
+    if (socket && socket.connected) {
+        socket.emit("submit_flower", data);
+        console.log("Sent to Unity Server:", data);
+    } else {
+        console.warn("Socket not connected");
+    }
+
+    /* 4. [수정] 안내 후 페이지 이동 */
+    alert("꽃 심기 완료!");
+    
+    // [중요] sessionStorage.clear(); 를 삭제했습니다. 
+    // 삭제하면 페이지 8에서 이름이나 지역 정보를 다시 쓸 수 없어 오류가 날 수 있기 때문입니다.
+
+    // [중요] 경로 오류 수정을 위해 앞에 '/'를 제거했습니다.
+    window.location.href = '/public/page8.html'; 
+}
     </script>
 </body>
 
