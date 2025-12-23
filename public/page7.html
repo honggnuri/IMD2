@@ -27,14 +27,12 @@
             <div class="controls-wrapper">
                 <div class="palette-row">
                     <span class="control-label" style="font-family: 'UhBeeZIGLE';">모양 (Shape)</span>
-                    <div id="flower-palette-container" class="scroll-palette">
-                    </div>
+                    <div id="flower-palette-container" class="scroll-palette"></div>
                 </div>
 
                 <div class="palette-row">
                     <span class="control-label" style="font-family: 'UhBeeZIGLE';">색상 (Color)</span>
-                    <div id="color-palette" class="scroll-palette">
-                    </div>
+                    <div id="color-palette" class="scroll-palette"></div>
                 </div>
             </div>
 
@@ -65,11 +63,9 @@
         const districtKr = districtNames[storedDistrict] || "세종시";
         document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
 
-        // 2. 색상 및 모양 데이터 정의
+        // 2. 데이터 정의
         const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7', '#FFD43B', '#69DB7C', '#FCC2D7'];
-
         const allShapes = ['F1', 'F2', 'F3'];
-        // 지역별 꽃 모양 프리셋 (기존 데이터 유지)
         const districtShapes = {
             'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
             'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
@@ -93,9 +89,23 @@
 
         // 3. 캔버스 초기화
         const canvas = new fabric.Canvas('c', {
-            preserveObjectStacking: true
+            preserveObjectStacking: true // 이걸 true로 해도 bringToFront()로 강제 조절 가능
         });
         canvas.backgroundColor = 'transparent';
+
+        // [기능 추가 1] 선택된 객체를 맨 위로 올리기 이벤트
+        function moveSelectedToFront(e) {
+            if (e.selected && e.selected.length > 0) {
+                e.selected.forEach(obj => {
+                    canvas.bringToFront(obj);
+                });
+                canvas.renderAll();
+            }
+        }
+        // 선택이 생성되거나(클릭), 업데이트될 때 실행
+        canvas.on('selection:created', moveSelectedToFront);
+        canvas.on('selection:updated', moveSelectedToFront);
+
 
         window.onload = function () {
             resizeCanvas();
@@ -115,7 +125,7 @@
             }
         }
 
-        // 4. 팔레트 생성 로직
+        // 4. 팔레트 로직
         function initColorPalette() {
             const container = document.getElementById('color-palette');
             container.innerHTML = '';
@@ -147,7 +157,7 @@
             container.innerHTML = '';
 
             for (let shape of shapes) {
-                const filePath = `assets/${shape}.svg`; // 경로 주의
+                const filePath = `assets/${shape}.svg`;
                 try {
                     const res = await fetch(filePath);
                     if (!res.ok) throw new Error('SVG Load Fail');
@@ -162,7 +172,7 @@
                     btn.onclick = () => addShapeToCanvas(shape, currentSelectedColor);
                     container.appendChild(btn);
                 } catch (e) {
-                    console.warn(`[Shape Error] ${shape}:`, e);
+                    console.warn(e);
                 }
             }
         }
@@ -174,30 +184,44 @@
             });
         }
 
-        // 5. 캔버스 조작 로직 (추가, 색상변경, 삭제)
+        // 5. 캔버스 객체 추가 (설정 적용)
         function addShapeToCanvas(type, color) {
             fabric.loadSVGFromURL(`assets/${type}.svg`, (objects, options) => {
                 const obj = fabric.util.groupSVGElements(objects, options);
                 applyColor(obj, color);
 
                 const canvasWidth = canvas.getWidth();
-                // 캔버스 크기의 30% 정도로 로드
                 const initialScale = (canvasWidth * 0.3) / Math.max(obj.width, obj.height);
                 const center = canvas.getCenter();
 
                 obj.set({
                     left: center.left, top: center.top,
                     originX: 'center', originY: 'center',
-                    scaleX: 0, scaleY: 0,
-                    cornerColor: 'rgba(0,0,0,0.5)', transparentCorners: false
+
+                    // [기능 추가 2] 비율 고정 (Uniform Scaling)
+                    lockUniScaling: true,
+
+                    // [기능 추가 3] 회전 30도 스냅
+                    snapAngle: 30,
+
+                    cornerColor: 'rgba(0,0,0,0.5)',
+                    transparentCorners: false
                 });
+
+                // 비율 고정을 시각적으로 보여주기 위해 상/하/좌/우 핸들 숨김
+                obj.setControlsVisibility({
+                    mt: false, mb: false, ml: false, mr: false
+                });
+
                 obj.userColor = color;
                 obj.type = type;
 
                 canvas.add(obj);
                 canvas.setActiveObject(obj);
 
-                // 팝업 애니메이션
+                // 생성되자마자 맨 위로
+                canvas.bringToFront(obj);
+
                 obj.animate('scaleX', initialScale, { duration: 400, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
                 obj.animate('scaleY', initialScale, { duration: 400, easing: fabric.util.ease.easeOutBack });
             });
@@ -237,84 +261,114 @@
         });
 
         /* ============================================================
-           [핵심 수정] 저장 후 페이지 8로 이동하는 함수
-           1. 모양 데이터 JSON 생성 (나중에 서버 전송용)
-           2. 캔버스 이미지(PNG) 생성 (다음 페이지 시각화용)
-           3. sessionStorage에 저장 후 이동
+           저장 및 이동 (Bounding Box 정규화 + 좌표/순서 보정 포함)
         ============================================================ */
+        /* ============================================================
+           [최종 수정] 바운딩 박스 기반 + 발바닥(Bottom) 기준 좌표 계산
+        ============================================================ */
+        /* ============================================================
+           [최종 비율 고정 버전] 
+           데이터를 0.0 ~ 1.0 사이의 비율 값으로 변환해서 보냅니다.
+           이렇게 해야 유니티에서 크기를 키워도 모양이 안 망가집니다.
+        ============================================================ */
+        /* ============================================================
+                  [최종 비율 고정 버전] 
+                  데이터를 0.0 ~ 1.0 사이의 비율 값으로 변환해서 보냅니다.
+                  이렇게 해야 유니티에서 크기를 키워도 모양이 안 망가집니다.
+               ============================================================ */
+        /* ============================================================
+     [최종 정밀 보정] 중심점(Center Point) 강제 추출 방식
+     - 회전된 객체의 '모서리'가 아니라 '진짜 중심'을 잡습니다.
+     - 유니티에서 위치가 미세하게 틀어지는 현상을 잡습니다.
+ ============================================================ */
         function saveAndMove() {
-            // 1. 선택 상자가 저장되는 것 방지
             canvas.discardActiveObject();
             canvas.renderAll();
 
             const objects = canvas.getObjects();
-            if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
+            if (objects.length === 0) {
+                alert('꽃을 만들어주세요!');
+                return;
+            }
 
-            // --- [STEP 1] 꽃 뭉치의 전체 영역(Bounding Box) 계산 ---
-            // 꽃들이 뭉쳐있는 곳의 정중앙(Center)을 찾습니다.
+            /* ===============================
+               1. 전체 꽃 영역 계산 (2번의 정확한 방식 유지)
+               =============================== */
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
             objects.forEach(obj => {
-                const bound = obj.getBoundingRect(); // 회전된 상태까지 고려한 영역
-                if (bound.left < minX) minX = bound.left;
-                if (bound.top < minY) minY = bound.top;
-                if (bound.left + bound.width > maxX) maxX = bound.left + bound.width;
-                if (bound.top + bound.height > maxY) maxY = bound.top + bound.height;
+                const coords = obj.aCoords; // 회전 포함 정확한 좌표
+                for (let key in coords) {
+                    const p = coords[key];
+                    if (p.x < minX) minX = p.x;
+                    if (p.y < minY) minY = p.y;
+                    if (p.x > maxX) maxX = p.x;
+                    if (p.y > maxY) maxY = p.y;
+                }
             });
 
-            const groupCenterX = (minX + maxX) / 2;
-            const groupCenterY = (minY + maxY) / 2;
+            /* ===============================
+               2. 기준점 설정 (1번 방식)
+               =============================== */
+            const centerX = minX + (maxX - minX) / 2;
+            const bottomY = maxY;
 
-            // --- [STEP 2] 유니티 전송용 데이터 변환 (상대 좌표) ---
-            // 캔버스 크기에 따른 비율 보정 (웹 500px -> 유니티 5 Unit 정도 비율로 가정)
-            const SCALE_FACTOR = 0.01;
+            /* ===============================
+               3. 정규화 비율 (1번 방식 유지)
+               =============================== */
+            const canvasWidth = canvas.getWidth();
+            const normalizeRatio = 1.0 / canvasWidth;
 
+            /* ===============================
+               4. Unity 데이터 생성
+               =============================== */
             const unityDataList = objects.map((o, index) => {
-                // 중심점(groupCenter)을 기준으로 얼마나 떨어져 있는지 계산
-                const relativeX = (o.left - groupCenterX) * SCALE_FACTOR;
-                const relativeY = (o.top - groupCenterY) * SCALE_FACTOR * -1; // ★ Y축 반전 (중요)
-
                 return {
-                    prefabName: o.type,       // 유니티 프리팹 이름 (예: "F1")
-                    color: o.userColor,       // 색상
+                    prefabName: o.type || 'petal_prefab',
+                    color: o.userColor || '#FF9AA2',
 
-                    // 위치 (꽃 뭉치 중앙 기준)
-                    posX: parseFloat(relativeX.toFixed(4)),
-                    posY: parseFloat(relativeY.toFixed(4)),
+                    // 1번 방식 좌표 계산
+                    posX: parseFloat(((o.left - centerX) * normalizeRatio).toFixed(6)),
+                    posY: parseFloat(((bottomY - o.top) * normalizeRatio).toFixed(6)),
 
-                    // 크기
-                    scaleX: parseFloat((o.scaleX * SCALE_FACTOR * 100).toFixed(4)), // 보정값
-                    scaleY: parseFloat((o.scaleY * SCALE_FACTOR * 100).toFixed(4)),
+                    scaleX: parseFloat((o.scaleX * normalizeRatio).toFixed(6)),
+                    scaleY: parseFloat((o.scaleY * normalizeRatio).toFixed(6)),
 
-                    // 회전 (웹은 시계방향, 유니티는 반시계방향 -> -부호 붙임)
                     rotation: -o.angle,
-
-                    // 순서 (나중에 그린게 위에 올라옴)
                     sortOrder: index
                 };
             });
 
-            // --- [STEP 3] 웹 시각화용 이미지 생성 (Page 8 표시용) ---
+            /* ===============================
+               5. 미리보기 이미지 (2번 기능 유지)
+               =============================== */
             const flowerImageUrl = canvas.toDataURL({
                 format: 'png',
                 quality: 1.0,
-                multiplier: 2
+                multiplier: 2,
+                left: minX,
+                top: minY,
+                width: maxX - minX,
+                height: maxY - minY
             });
 
-            // --- [STEP 4] 저장 ---
+            /* ===============================
+               6. 데이터 저장 & 이동
+               =============================== */
             const data = {
                 userName: storedName,
                 location: storedDistrict,
-                unityData: unityDataList, // 유니티가 쓸 좌표 데이터
-                previewImage: flowerImageUrl // 웹에서 보여줄 이미지
+                unityData: unityDataList,
+                previewImage: flowerImageUrl
             };
 
             sessionStorage.setItem('flowerData', JSON.stringify(data));
-            console.log("유니티 전송용 데이터 생성 완료:", data);
 
-            alert("꽃 디자인이 저장되었습니다! \n물을 주러 가볼까요?");
-            window.location.href = '/page8.html'; // 경로 확인 필요
+            console.log("전송 데이터:", data);
+            alert("저장되었습니다!");
+            window.location.href = 'page8.html';
         }
+
     </script>
 </body>
 
