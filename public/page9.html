@@ -1,22 +1,268 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sejong Bloom</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <title>Sejong Bloom - The Garden</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        
+        /* [수정됨] 이름표: 검정 배경 제거, 글씨 테두리 추가 */
+        .flower-label {
+            margin-top: -40px;
+            color: white;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.8), -1px -1px 0 rgba(0,0,0,0.8);
+            padding: 5px;
+            pointer-events: none;
+            opacity: 0.9;
+        }
+        
+        #guide {
+            position: absolute; bottom: 30px; width: 100%; text-align: center;
+            color: white; font-family: 'Noto Sans KR', sans-serif; font-size: 18px;
+            pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10;
+        }
+    </style>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div id="step-1" class="img_container">
-        <img src="/assets/phone12.jpg"> </div>
-        <button class="next-btn" onclick="location.href='/page5.html'">오와!</button>
-    </div>
+
+<div id="guide">꽃을 클릭하면 자세히 볼 수 있어요! 🌸</div>
+
+<script type="x-shader/x-vertex" id="skyVertexShader">
+    varying vec2 vUv; varying vec3 vWorldPosition;
+    void main() { vUv = uv; vec4 worldPosition = modelMatrix * vec4(position, 1.0); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+</script>
+<script type="x-shader/x-fragment" id="skyFragmentShader">
+    uniform vec3 uColorSkyTop; uniform vec3 uColorSkyBottom; uniform vec3 uColorCloud; uniform float uTime; varying vec2 vUv; varying vec3 vWorldPosition;
+    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); } vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+    float snoise(vec3 v) { const vec2 C = vec2(1.0/6.0, 1.0/3.0); const vec4 D = vec4(0.0, 0.5, 1.0, 2.0); vec3 i = floor(v + dot(v, C.yyy)); vec3 x0 = v - i + dot(i, C.xxx); vec3 g = step(x0.yzx, x0.xyz); vec3 l = 1.0 - g; vec3 i1 = min(g.xyz, l.zxy); vec3 i2 = max(g.xyz, l.zxy); vec3 x1 = x0 - i1 + C.xxx; vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy; i = mod289(i); vec4 p = permute(permute(permute(i.z + vec4(0.0, i1.z, i2.z, 1.0)) + i.y + vec4(0.0, i1.y, i2.y, 1.0)) + i.x + vec4(0.0, i1.x, i2.x, 1.0)); float n_ = 0.142857142857; vec3 ns = n_ * D.wyz - D.xzx; vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z); vec4 y_ = floor(j - 7.0 * x_); vec4 x = x_ * ns.x + ns.yyyy; vec4 y = y_ * ns.x + ns.yyyy; vec4 h = 1.0 - abs(x) - abs(y); vec4 b0 = vec4(x.xy, y.xy); vec4 b1 = vec4(x.zw, y.zw); vec4 s0 = floor(b0) * 2.0 + 1.0; vec4 s1 = floor(b1) * 2.0 + 1.0; vec4 sh = -step(h, vec4(0.0)); vec4 a0 = b0.xzyw + s0.xzyw * sh.xzyw; vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww; vec3 p0 = vec3(a0.xy, h.x); vec3 p1 = vec3(a0.zw, h.y); vec3 p2 = vec3(a1.xy, h.z); vec3 p3 = vec3(a1.zw, h.w); vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3))); p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w; vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0); m = m * m; return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3))); }
+    void main() { float horizon = normalize(vWorldPosition).y; vec3 skyColor = mix(uColorSkyBottom, uColorSkyTop, max(horizon, 0.0)); float cloudNoise = snoise(vWorldPosition * 0.0008 + vec3(uTime * 0.015, 0.0, uTime * 0.005)); cloudNoise += snoise(vWorldPosition * 0.002 + vec3(uTime * 0.03)) * 0.4; float cloudIntensity = smoothstep(0.45, 0.75, cloudNoise); cloudIntensity *= smoothstep(0.0, 0.15, horizon); vec3 finalColor = mix(skyColor, uColorCloud, cloudIntensity); gl_FragColor = vec4(finalColor, 1.0); }
+</script>
+
+<script type="x-shader/x-vertex" id="grassVertexShader">
+    varying vec2 vUv; varying float vHeight; uniform float uTime;
+    void main() { vUv = uv; vec4 worldPosition = instanceMatrix * vec4(position, 1.0); vHeight = position.y; float wind = sin(uTime * 0.8 + worldPosition.x * 0.2 + worldPosition.z * 0.2) * 0.08; wind += cos(uTime * 2.0 + worldPosition.x * 0.1) * 0.04; float bend = smoothstep(0.0, 1.0, vHeight); vec3 pos = position; pos.x += wind * bend * 2.0; pos.z += wind * bend * 1.0; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(pos, 1.0); }
+</script>
+<script type="x-shader/x-fragment" id="grassFragmentShader">
+    varying float vHeight; uniform vec3 uColorBottom; uniform vec3 uColorTop;
+    void main() { float smoothHeight = pow(vHeight, 0.7); vec3 baseColor = mix(uColorBottom, uColorTop, smoothHeight); float softGlow = smoothstep(0.5, 1.0, vHeight) * 0.2; vec3 finalColor = baseColor + softGlow + vec3(0.05); gl_FragColor = vec4(finalColor, 1.0); }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+    // 설정
+    const CONFIG = {
+        serverUrl: "http://15.134.86.182:3000", 
+        flowerScale: 1.5,
+        worldSize: 250, grassCount: 150000, treeCount: 50, rockCount: 60          
+    };
+
+    const loader = new GLTFLoader();
+    const prefabCache = {};
+    const flowers = [];
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+
+    // 씬 & 렌더러
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
+    camera.position.set(0, 30, 90); 
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0px';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    document.body.appendChild(labelRenderer.domElement);
+
+    // 컨트롤
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.maxDistance = 150; controls.minDistance = 5; controls.maxPolarAngle = Math.PI / 2 - 0.05; controls.target.set(0, 5, 0); controls.enableDamping = true;
+
+    // 조명 & 하늘
+    const sunLight = new THREE.DirectionalLight(0xfff0dd, 2.0); sunLight.position.set(80, 100, 60); sunLight.castShadow = true; 
+    sunLight.shadow.mapSize.set(2048, 2048); 
+    sunLight.shadow.camera.left = -100; sunLight.shadow.camera.right = 100; sunLight.shadow.camera.top = 100; sunLight.shadow.camera.bottom = -100;
+    scene.add(sunLight);
+    scene.add(new THREE.AmbientLight(0xcceeff, 0.7));
+
+    const skyUniforms = { uTime: { value: 0 }, uColorSkyTop: { value: new THREE.Color(0x4CA1D3) }, uColorSkyBottom: { value: new THREE.Color(0xAEEEEE) }, uColorCloud: { value: new THREE.Color(0xFFFFFF) } };
+    const skyMat = new THREE.ShaderMaterial({ vertexShader: document.getElementById('skyVertexShader').textContent, fragmentShader: document.getElementById('skyFragmentShader').textContent, uniforms: skyUniforms, side: THREE.BackSide });
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 32), skyMat));
+    scene.fog = new THREE.Fog(0xAEEEEE, 60, 200);
+
+    // 지형
+    function getTerrainHeight(x, z) { const y1 = Math.sin(x * 0.02) * 6.0; const y2 = Math.cos(z * 0.025) * 5.0; const y3 = Math.sin(x * 0.05 + z * 0.05) * 2.0; return (y1 + y2 + y3) - 3; }
+    function createTerrain() { const geo = new THREE.PlaneGeometry(CONFIG.worldSize, CONFIG.worldSize, 64, 64); geo.rotateX(-Math.PI / 2); const pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) { pos.setY(i, getTerrainHeight(pos.getX(i), pos.getZ(i))); } geo.computeVertexNormals(); const mat = new THREE.MeshStandardMaterial({ color: 0x7a9c6b }); const terrain = new THREE.Mesh(geo, mat); terrain.receiveShadow = true; scene.add(terrain); }
+    
+    // 잔디
+    const grassUniforms = { uTime: { value: 0 }, uColorBottom: { value: new THREE.Color(0x6a9e7a) }, uColorTop: { value: new THREE.Color(0xc3e8a8) } };
+    function createGrass() { const grassGeo = new THREE.ConeGeometry(0.03, 1.0, 3, 1); grassGeo.translate(0, 0.5, 0); const grassMat = new THREE.ShaderMaterial({ vertexShader: document.getElementById('grassVertexShader').textContent, fragmentShader: document.getElementById('grassFragmentShader').textContent, uniforms: grassUniforms, side: THREE.DoubleSide }); const mesh = new THREE.InstancedMesh(grassGeo, grassMat, CONFIG.grassCount); for (let i = 0; i < CONFIG.grassCount; i++) { const x = (Math.random() - 0.5) * CONFIG.worldSize; const z = (Math.random() - 0.5) * CONFIG.worldSize; const y = getTerrainHeight(x, z); dummy.position.set(x, y, z); const scale = 0.6 + Math.random() * 0.6; dummy.scale.set(scale, scale * 0.8, scale); dummy.rotation.y = Math.random() * Math.PI; dummy.rotation.x = (Math.random() - 0.5) * 0.3; dummy.rotation.z = (Math.random() - 0.5) * 0.3; dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); } mesh.receiveShadow = true; scene.add(mesh); }
+
+    // [복구됨] 나무
+    function createTrees() { const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 5); trunkGeo.translate(0, 0.75, 0); const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, flatShading: true }); const leafGeo = new THREE.DodecahedronGeometry(2.2, 0); leafGeo.translate(0, 3.0, 0); const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true }); const trunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, CONFIG.treeCount); const leafMesh = new THREE.InstancedMesh(leafGeo, leafMat, CONFIG.treeCount); const leafColors = [0xFF7F50, 0xFFA07A, 0xFFD700, 0xE9967A]; for (let i = 0; i < CONFIG.treeCount; i++) { let x, z, dist; do { x = (Math.random()-0.5)*CONFIG.worldSize; z = (Math.random()-0.5)*CONFIG.worldSize; dist = Math.sqrt(x*x+z*z); } while (dist < 35); const y = getTerrainHeight(x, z); dummy.position.set(x, y, z); const scale = 0.8 + Math.random() * 0.8; dummy.scale.set(scale, scale, scale); dummy.rotation.y = Math.random() * Math.PI; dummy.updateMatrix(); trunkMesh.setMatrixAt(i, dummy.matrix); leafMesh.setMatrixAt(i, dummy.matrix); color.setHex(leafColors[Math.floor(Math.random() * leafColors.length)]); leafMesh.setColorAt(i, color); } trunkMesh.castShadow = true; trunkMesh.receiveShadow = true; leafMesh.castShadow = true; leafMesh.receiveShadow = true; scene.add(trunkMesh); scene.add(leafMesh); }
+    
+    // [복구됨] 바위
+    function createRocks() { const geo = new THREE.DodecahedronGeometry(1, 0); const mat = new THREE.MeshStandardMaterial({ color: 0xA9A9A9, flatShading: true }); const mesh = new THREE.InstancedMesh(geo, mat, CONFIG.rockCount); for (let i = 0; i < CONFIG.rockCount; i++) { const x = (Math.random()-0.5)*CONFIG.worldSize; const z = (Math.random()-0.5)*CONFIG.worldSize; const y = getTerrainHeight(x, z); dummy.position.set(x, y + 0.3, z); dummy.scale.set(1+Math.random(), 0.6+Math.random(), 1+Math.random()); dummy.rotation.set(Math.random()*3, Math.random()*3, Math.random()*3); dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); } mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh); }
+
+    // [복구됨] 주상절리
+    function createCliffs() {
+        const columnGeo = new THREE.CylinderGeometry(3.5, 3.5, 60, 6); columnGeo.translate(0, 30, 0); 
+        const columnMat = new THREE.MeshStandardMaterial({ color: 0x3E424B, flatShading: true, roughness: 0.9 });
+        const cliffClusters = 8; const columnsPerCluster = 50; const totalColumns = cliffClusters * columnsPerCluster;
+        const cliffMesh = new THREE.InstancedMesh(columnGeo, columnMat, totalColumns);
+        let idx = 0;
+        for(let i=0; i<cliffClusters; i++) {
+            const angle = (i / cliffClusters) * Math.PI * 2 + Math.random() * 0.5;
+            const dist = CONFIG.worldSize / 2 + 10 + Math.random() * 20;
+            const centerX = Math.cos(angle) * dist; const centerZ = Math.sin(angle) * dist;
+            for(let j=0; j<columnsPerCluster; j++) {
+                const offsetX = (Math.random() - 0.5) * 35; const offsetZ = (Math.random() - 0.5) * 35;
+                const heightScale = 0.8 + Math.random() * 1.4; 
+                const groundY = getTerrainHeight(centerX + offsetX, centerZ + offsetZ);
+                dummy.position.set(centerX + offsetX, groundY - 15, centerZ + offsetZ);
+                dummy.scale.set(1, heightScale, 1);
+                dummy.rotation.set(0, Math.random() * Math.PI, 0);
+                dummy.updateMatrix(); cliffMesh.setMatrixAt(idx++, dummy.matrix);
+            }
+        }
+        cliffMesh.castShadow = true; cliffMesh.receiveShadow = true; scene.add(cliffMesh);
+    }
+
+    // 꽃 생성 (안전장치 포함)
+    async function getModel(prefabName) { 
+        if (prefabCache[prefabName]) return prefabCache[prefabName]; 
+        try { 
+            const gltf = await loader.loadAsync(`./assets/${prefabName}.glb`); 
+            prefabCache[prefabName] = gltf.scene; return gltf.scene; 
+        } catch { return null; } 
+    }
+
+    async function createFlower(data) {
+        const flowerHolder = new THREE.Group();
+        flowerHolder.userData = { isFlower: true, isGrowing: true, growProgress: 0, swayOffset: Math.random() * 100, userName: data.userName };
+
+        let x = data.gardenX || (Math.random()-0.5) * 40; 
+        let z = data.gardenZ || (Math.random()-0.5) * 40; 
+        let y = getTerrainHeight(x, z); 
+        flowerHolder.position.set(x, y, z);
+
+        const parts = Array.isArray(data.unityData) ? data.unityData : [];
+        for (const partData of parts) {
+            let mesh; 
+            const template = await getModel(partData.prefabName); 
+            
+            if (template) {
+                mesh = template.clone(); 
+            } else {
+                // 모델 로드 실패시 큐브 대체
+                mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+            }
+            
+            const colorHex = partData.color.startsWith('#') ? partData.color : '#' + partData.color;
+            const mat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(colorHex), transmission: 0.6, opacity: 1, transparent: true, side: THREE.DoubleSide });
+            
+            mesh.traverse((c) => { if (c.isMesh) c.material = mat; });
+            mesh.position.set(partData.posX * CONFIG.flowerScale, partData.posY * CONFIG.flowerScale, partData.sortOrder * 0.05); 
+            mesh.rotation.z = THREE.MathUtils.degToRad(-partData.rotation); 
+            mesh.scale.set(partData.scaleX * CONFIG.flowerScale, partData.scaleY * CONFIG.flowerScale, CONFIG.flowerScale); 
+            flowerHolder.add(mesh);
+        }
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'flower-label';
+        nameDiv.textContent = `${data.userName || '손님'}의 꽃`;
+        const label = new CSS2DObject(nameDiv);
+        label.position.set(0, 4.5, 0); 
+        flowerHolder.add(label);
+
+        flowerHolder.scale.set(0, 0, 0);
+        scene.add(flowerHolder);
+        flowers.push(flowerHolder);
+    }
+
+    async function loadInitialFlowers() { 
+        try { 
+            const response = await fetch(`${CONFIG.serverUrl}/all-flowers`); 
+            const allFlowers = await response.json(); 
+            for (const flowerData of allFlowers) await createFlower(flowerData); 
+        } catch (e) { console.error(e); } 
+    }
+
+    const socket = io(CONFIG.serverUrl); 
+    socket.on("to_unity", (data) => createFlower(data));
+
+    // 클릭 인터랙션
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let targetCameraPos = null; let targetControlsTarget = null;
+    window.addEventListener('pointerdown', (event) => {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(flowers, true);
+        if (intersects.length > 0) {
+            let targetGroup = intersects[0].object;
+            while(targetGroup.parent && targetGroup.parent.type !== 'Scene') targetGroup = targetGroup.parent;
+            if (targetGroup && targetGroup.userData.isFlower) {
+                const fPos = targetGroup.position.clone();
+                targetControlsTarget = fPos.clone().add(new THREE.Vector3(0, 2, 0));
+                const offset = camera.position.clone().sub(controls.target).normalize().multiplyScalar(15);
+                targetCameraPos = fPos.clone().add(offset).add(new THREE.Vector3(0, 3, 0));
+            }
+        }
+    });
+
+    const clock = new THREE.Clock();
+    function animate() {
+        requestAnimationFrame(animate);
+        const time = clock.getElapsedTime();
+        controls.update();
+        grassUniforms.uTime.value = time; skyUniforms.uTime.value = time; 
+
+        if (targetCameraPos && targetControlsTarget) {
+            camera.position.lerp(targetCameraPos, 0.05); controls.target.lerp(targetControlsTarget, 0.05);
+            if (camera.position.distanceTo(targetCameraPos) < 0.1) { targetCameraPos = null; targetControlsTarget = null; }
+        }
+
+        flowers.forEach(flower => {
+            if (flower.userData.isGrowing) { flower.userData.growProgress += 0.02; let s = flower.userData.growProgress; if (s >= 1) { s = 1; flower.userData.isGrowing = false; } flower.scale.set(s, s, s); }
+            flower.rotation.z = Math.sin(time * 1.5 + flower.userData.swayOffset) * 0.05;
+        });
+        
+        renderer.render(scene, camera);
+        labelRenderer.render(scene, camera);
+    }
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); labelRenderer.setSize(window.innerWidth, window.innerHeight); });
+
+    // ✨ 모든 환경 요소 생성
+    createTerrain(); createGrass(); createTrees(); createRocks(); createCliffs(); 
+    loadInitialFlowers(); 
+    animate();
+</script>
 </body>
 </html>
