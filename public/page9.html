@@ -4,98 +4,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Sejong Bloom - The Garden</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #87CEEB;
-        }
+    <title>Sejong Bloom - 물 주기</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styleflowergrow.css">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
 
-        /* 3D 라벨 스타일 */
-        .flower-label {
-            margin-top: -45px;
-            color: white;
-            font-family: 'Noto Sans KR', sans-serif;
-            font-size: 14px;
-            font-weight: bold;
-            text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
-            padding: 5px;
-            pointer-events: none;
-            opacity: 0.9;
-        }
+<body>
 
-        #guide {
-            position: absolute;
-            bottom: 30px;
-            width: 100%;
-            text-align: center;
-            color: white;
-            font-family: 'Noto Sans KR', sans-serif;
-            font-size: 18px;
-            pointer-events: none;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-            z-index: 10;
-        }
+    <div class="container">
+        <div class="bg_container">
+            <img src="/assets/phone11.jpg" alt="background">
+        </div>
 
-        #ui-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 200px;
-            max-height: 80vh;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(8px);
-            border-radius: 15px;
-            padding: 15px;
-            overflow-y: auto;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            color: white;
-            font-family: 'Noto Sans KR', sans-serif;
-            z-index: 20;
-        }
+        <div id="watering-canvas-container"></div>
 
-        #ui-container h3 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
-            padding-bottom: 5px;
-        }
+        <button id="finish-btn" class="next-btn hidden" onclick="window.sendAndMove()">
+            다 자랐다!!!
+        </button>
+    </div>
 
-        .flower-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            margin-bottom: 5px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-size: 14px;
-        }
+    <script>
+        /* ============================================================
+           1. 서버 전송 및 페이지 이동 로직
+        ============================================================ */
+        window.sendAndMove = function () {
+            const btn = document.getElementById('finish-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "전송 중...";
+            }
 
-        .flower-item:hover {
-            background: rgba(255, 255, 255, 0.3);
-            color: #333;
-        }
+            const storedData = localStorage.getItem('flowerData');
+            if (!storedData) {
+                alert("저장된 꽃 데이터가 없습니다.");
+                window.location.href = 'index.html';
+                return;
+            }
 
-        .flower-icon {
-            margin-right: 8px;
-        }
+            try {
+                const data = JSON.parse(storedData);
+                // 🔴 서버 IP 주소를 본인의 AWS 서버 IP로 확인하세요!
+                const socket = io("http://15.134.86.182:3000", {
+                    transports: ['websocket'],
+                    reconnectionAttempts: 1,
+                    timeout: 2000
+                });
 
-        #ui-container::-webkit-scrollbar {
-            width: 6px;
-        }
+                socket.on('connect', () => {
+                    socket.emit("submit_flower", data);
+                    setTimeout(() => {
+                        alert("세종시 정원에 꽃을 심었습니다!");
+                        window.location.href = 'page10.html';
+                    }, 500);
+                });
 
-        #ui-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 3px;
-        }
-    </style>
+                socket.on('connect_error', () => { window.location.href = 'page10.html'; });
+                setTimeout(() => { window.location.href = 'page10.html'; }, 2500);
 
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+            } catch (e) {
+                window.location.href = 'page10.html';
+            }
+        };
+    </script>
 
     <script type="importmap">
         {
@@ -105,391 +76,165 @@
             }
         }
     </script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-</head>
-
-<body>
-
-    <div id="guide">꽃을 클릭하거나 리스트를 눌러보세요! 🌸</div>
-    <div id="ui-container">
-        <h3>🌱 정원 방명록</h3>
-        <div id="flower-list"></div>
-    </div>
-
-    <script type="x-shader/x-vertex" id="skyVertexShader">
-        varying vec2 vUv; varying vec3 vWorldPosition; void main() { vUv = uv; vec4 worldPosition = modelMatrix * vec4(position, 1.0); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-    </script>
-    <script type="x-shader/x-fragment" id="skyFragmentShader">
-        uniform vec3 uColorSkyTop; uniform vec3 uColorSkyBottom; uniform vec3 uColorCloud; uniform float uTime; varying vec2 vUv; varying vec3 vWorldPosition;
-        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); } vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-        float snoise(vec3 v) { const vec2 C = vec2(1.0/6.0, 1.0/3.0); const vec4 D = vec4(0.0, 0.5, 1.0, 2.0); vec3 i = floor(v + dot(v, C.yyy)); vec3 x0 = v - i + dot(i, C.xxx); vec3 g = step(x0.yzx, x0.xyz); vec3 l = 1.0 - g; vec3 i1 = min(g.xyz, l.zxy); vec3 i2 = max(g.xyz, l.zxy); vec3 x1 = x0 - i1 + C.xxx; vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy; i = mod289(i); vec4 p = permute(permute(permute(i.z + vec4(0.0, i1.z, i2.z, 1.0)) + i.y + vec4(0.0, i1.y, i2.y, 1.0)) + i.x + vec4(0.0, i1.x, i2.x, 1.0)); float n_ = 0.142857142857; vec3 ns = n_ * D.wyz - D.xzx; vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z); vec4 y_ = floor(j - 7.0 * x_); vec4 x = x_ * ns.x + ns.yyyy; vec4 y = y_ * ns.x + ns.yyyy; vec4 h = 1.0 - abs(x) - abs(y); vec4 b0 = vec4(x.xy, y.xy); vec4 b1 = vec4(x.zw, y.zw); vec4 s0 = floor(b0) * 2.0 + 1.0; vec4 s1 = floor(b1) * 2.0 + 1.0; vec4 sh = -step(h, vec4(0.0)); vec4 a0 = b0.xzyw + s0.xzyw * sh.xzyw; vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww; vec3 p0 = vec3(a0.xy, h.x); vec3 p1 = vec3(a0.zw, h.y); vec3 p2 = vec3(a1.xy, h.z); vec3 p3 = vec3(a1.zw, h.w); vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3))); p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w; vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0); m = m * m; return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3))); }
-        void main() { float horizon = normalize(vWorldPosition).y; vec3 skyColor = mix(uColorSkyBottom, uColorSkyTop, max(horizon, 0.0)); float cloudNoise = snoise(vWorldPosition * 0.0008 + vec3(uTime * 0.015, 0.0, uTime * 0.005)); cloudNoise += snoise(vWorldPosition * 0.002 + vec3(uTime * 0.03)) * 0.4; float cloudIntensity = smoothstep(0.45, 0.75, cloudNoise); cloudIntensity *= smoothstep(0.0, 0.15, horizon); vec3 finalColor = mix(skyColor, uColorCloud, cloudIntensity); gl_FragColor = vec4(finalColor, 1.0); }
-    </script>
-    <script type="x-shader/x-vertex" id="grassVertexShader">
-        varying vec2 vUv; varying float vHeight; uniform float uTime; void main() { vUv = uv; vec4 worldPosition = instanceMatrix * vec4(position, 1.0); vHeight = position.y; float wind = sin(uTime * 0.8 + worldPosition.x * 0.2 + worldPosition.z * 0.2) * 0.08; wind += cos(uTime * 2.0 + worldPosition.x * 0.1) * 0.04; float bend = smoothstep(0.0, 1.0, vHeight); vec3 pos = position; pos.x += wind * bend * 2.0; pos.z += wind * bend * 1.0; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(pos, 1.0); }
-    </script>
-    <script type="x-shader/x-fragment" id="grassFragmentShader">
-        varying float vHeight; uniform vec3 uColorBottom; uniform vec3 uColorTop; void main() { float smoothHeight = pow(vHeight, 0.7); vec3 baseColor = mix(uColorBottom, uColorTop, smoothHeight); float softGlow = smoothstep(0.5, 1.0, vHeight) * 0.2; vec3 finalColor = baseColor + softGlow + vec3(0.05); gl_FragColor = vec4(finalColor, 1.0); }
-    </script>
 
     <script type="module">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import { DragControls } from 'three/addons/controls/DragControls.js';
 
-        const myName = sessionStorage.getItem('userName');
-        // 🔴 서버 주소 (AWS IP)
-        const SERVER_URL = "http://15.134.86.182:3000";
-        const FLOWER_GLOBAL_SCALE = 1;  // 꽃 전체 크기
-        const PART_SIZE_SCALE = 400.0;  // 파츠 크기
-        const PART_SPACING = 11.0;  // 파츠 간격
-        const FLOWER_BASE_HEIGHT = 0.001;  // 땅에서 띄우는 기본 높이
+        // --- 전역 상태 변수 ---
+        let isFinished = false;
 
-        const CONFIG = {
-            flowerScale: 1.5,
-            worldSize: 300, grassCount: 160000, treeCount: 60, rockCount: 60
-        };
+        const container = document.querySelector('.container');
+        let width = container.clientWidth;
+        let height = container.clientHeight;
 
-        let seedValue = 123456;
-        function seededRandom() {
-            var t = seedValue += 0x6D2B79F5;
-            t = Math.imul(t ^ t >>> 15, t | 1);
-            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        const scene = new THREE.Scene();
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('watering-canvas-container').appendChild(renderer.domElement);
+
+        const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+        camera.position.set(0, 1, 10);
+
+        // --- 💡 조명 설정 (밝게 수정) ---
+        scene.add(new THREE.AmbientLight(0xffffff, 2.0)); // 전체 밝기 상향
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        dirLight.position.set(5, 10, 10);
+        scene.add(dirLight);
+
+        // --- 1. 내 꽃 이미지 로드 ---
+        const savedDataString = localStorage.getItem('flowerData');
+        let flowerTexture = null;
+        if (savedDataString) {
+            try {
+                const flowerData = JSON.parse(savedDataString);
+                if (flowerData.previewImage) flowerTexture = new THREE.TextureLoader().load(flowerData.previewImage);
+            } catch (e) { }
         }
+
+        const flower = new THREE.Mesh(
+            new THREE.PlaneGeometry(6, 6),
+            flowerTexture ? new THREE.MeshBasicMaterial({ map: flowerTexture, transparent: true, side: THREE.DoubleSide }) : new THREE.MeshStandardMaterial({ color: 0xff6b6b })
+        );
+        flower.position.set(0, -3, 0);
+        const INITIAL_SCALE = 0.1;
+        flower.scale.set(INITIAL_SCALE, INITIAL_SCALE, INITIAL_SCALE);
+        scene.add(flower);
+
+        // --- 2. 물뿌리개 로드 및 재질 수정 ---
+        let canGroup = new THREE.Group();
+        scene.add(canGroup);
+        const spoutHelper = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ visible: false }));
+        spoutHelper.position.set(1.8, 0.5, 0);
+        canGroup.add(spoutHelper);
 
         const loader = new GLTFLoader();
-        const prefabCache = {};
-        const flowers = [];
-        const dummy = new THREE.Object3D();
-        const color = new THREE.Color();
+        let isModelReady = false;
+        let isUserDragging = false;
 
-        // 1. 씬 & 렌더러 설정
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB);
+        loader.load('./assets/Watering_Can.glb', (gltf) => {
+            const model = gltf.scene;
+            model.scale.set(0.05, 0.05, 0.05);
 
-        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
-        camera.position.set(0, 30, 90);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.body.appendChild(renderer.domElement);
-
-        const labelRenderer = new CSS2DRenderer();
-        labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        labelRenderer.domElement.style.position = 'absolute';
-        labelRenderer.domElement.style.top = '0px';
-        labelRenderer.domElement.style.pointerEvents = 'none';
-        document.body.appendChild(labelRenderer.domElement);
-
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.maxDistance = 150; controls.minDistance = 5;
-        controls.maxPolarAngle = Math.PI / 2 - 0.05;
-        controls.target.set(0, 5, 0); controls.enableDamping = true;
-
-        const sunLight = new THREE.DirectionalLight(0xfff0dd, 2.0);
-        sunLight.position.set(80, 100, 60);
-        sunLight.castShadow = true;
-        sunLight.shadow.mapSize.set(2048, 2048);
-        scene.add(sunLight);
-        scene.add(new THREE.AmbientLight(0xcceeff, 0.7));
-
-        // 2. 환경 생성
-        const skyUniforms = { uTime: { value: 0 }, uColorSkyTop: { value: new THREE.Color(0x4CA1D3) }, uColorSkyBottom: { value: new THREE.Color(0xAEEEEE) }, uColorCloud: { value: new THREE.Color(0xFFFFFF) } };
-        const skyMat = new THREE.ShaderMaterial({ vertexShader: document.getElementById('skyVertexShader').textContent, fragmentShader: document.getElementById('skyFragmentShader').textContent, uniforms: skyUniforms, side: THREE.BackSide });
-        scene.add(new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 32), skyMat));
-        scene.fog = new THREE.Fog(0xAEEEEE, 60, 200);
-
-        function getTerrainHeight(x, z) { const y1 = Math.sin(x * 0.02) * 6.0; const y2 = Math.cos(z * 0.025) * 5.0; const y3 = Math.sin(x * 0.05 + z * 0.05) * 2.0; return (y1 + y2 + y3) - 3; }
-        function createTerrain() { const geo = new THREE.PlaneGeometry(CONFIG.worldSize, CONFIG.worldSize, 64, 64); geo.rotateX(-Math.PI / 2); const pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) { pos.setY(i, getTerrainHeight(pos.getX(i), pos.getZ(i))); } geo.computeVertexNormals(); const mat = new THREE.MeshStandardMaterial({ color: 0x7a9c6b }); const terrain = new THREE.Mesh(geo, mat); terrain.receiveShadow = true; scene.add(terrain); }
-
-        const grassUniforms = { uTime: { value: 0 }, uColorBottom: { value: new THREE.Color(0x6a9e7a) }, uColorTop: { value: new THREE.Color(0xc3e8a8) } };
-        function createGrass() { const grassGeo = new THREE.ConeGeometry(0.03, 1.0, 3, 1); grassGeo.translate(0, 0.5, 0); const grassMat = new THREE.ShaderMaterial({ vertexShader: document.getElementById('grassVertexShader').textContent, fragmentShader: document.getElementById('grassFragmentShader').textContent, uniforms: grassUniforms, side: THREE.DoubleSide }); const mesh = new THREE.InstancedMesh(grassGeo, grassMat, CONFIG.grassCount); for (let i = 0; i < CONFIG.grassCount; i++) { const x = (seededRandom() - 0.5) * CONFIG.worldSize; const z = (seededRandom() - 0.5) * CONFIG.worldSize; const y = getTerrainHeight(x, z); dummy.position.set(x, y, z); const scale = 0.6 + seededRandom() * 0.6; dummy.scale.set(scale, scale * 0.8, scale); dummy.rotation.y = seededRandom() * Math.PI; dummy.rotation.x = (seededRandom() - 0.5) * 0.3; dummy.rotation.z = (seededRandom() - 0.5) * 0.3; dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); } mesh.receiveShadow = true; scene.add(mesh); }
-
-        function createTrees() { const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 5); trunkGeo.translate(0, 0.75, 0); const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, flatShading: true }); const leafGeo = new THREE.DodecahedronGeometry(2.2, 0); leafGeo.translate(0, 3.0, 0); const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true }); const trunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, CONFIG.treeCount); const leafMesh = new THREE.InstancedMesh(leafGeo, leafMat, CONFIG.treeCount); const leafColors = [0xFF7F50, 0xFFA07A, 0xFFD700, 0xE9967A]; for (let i = 0; i < CONFIG.treeCount; i++) { let x, z, dist; do { x = (seededRandom() - 0.5) * CONFIG.worldSize; z = (seededRandom() - 0.5) * CONFIG.worldSize; dist = Math.sqrt(x * x + z * z); } while (dist < 35); const y = getTerrainHeight(x, z); dummy.position.set(x, y, z); const scale = 0.8 + seededRandom() * 0.8; dummy.scale.set(scale, scale, scale); dummy.rotation.y = seededRandom() * Math.PI; dummy.updateMatrix(); trunkMesh.setMatrixAt(i, dummy.matrix); leafMesh.setMatrixAt(i, dummy.matrix); color.setHex(leafColors[Math.floor(seededRandom() * leafColors.length)]); leafMesh.setColorAt(i, color); } scene.add(trunkMesh); scene.add(leafMesh); }
-
-        function createRocks() { const geo = new THREE.DodecahedronGeometry(1, 0); const mat = new THREE.MeshStandardMaterial({ color: 0xA9A9A9, flatShading: true }); const mesh = new THREE.InstancedMesh(geo, mat, CONFIG.rockCount); for (let i = 0; i < CONFIG.rockCount; i++) { const x = (seededRandom() - 0.5) * CONFIG.worldSize; const z = (seededRandom() - 0.5) * CONFIG.worldSize; const y = getTerrainHeight(x, z); dummy.position.set(x, y + 0.3, z); dummy.scale.set(1 + seededRandom(), 0.6 + seededRandom(), 1 + seededRandom()); dummy.rotation.set(seededRandom() * 3, seededRandom() * 3, seededRandom() * 3); dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); } scene.add(mesh); }
-
-        function createCliffs() { const columnGeo = new THREE.CylinderGeometry(3.5, 3.5, 60, 6); columnGeo.translate(0, 30, 0); const columnMat = new THREE.MeshStandardMaterial({ color: 0x3E424B, flatShading: true, roughness: 0.9 }); const cliffClusters = 8; const columnsPerCluster = 50; const totalColumns = cliffClusters * columnsPerCluster; const cliffMesh = new THREE.InstancedMesh(columnGeo, columnMat, totalColumns); let idx = 0; for (let i = 0; i < cliffClusters; i++) { const angle = (i / cliffClusters) * Math.PI * 2 + seededRandom() * 0.5; const dist = CONFIG.worldSize / 2 + 10 + seededRandom() * 20; const centerX = Math.cos(angle) * dist; const centerZ = Math.sin(angle) * dist; for (let j = 0; j < columnsPerCluster; j++) { const offsetX = (seededRandom() - 0.5) * 35; const offsetZ = (seededRandom() - 0.5) * 35; const heightScale = 0.8 + seededRandom() * 1.4; const groundY = getTerrainHeight(centerX + offsetX, centerZ + offsetZ); dummy.position.set(centerX + offsetX, groundY - 15, centerZ + offsetZ); dummy.scale.set(1, heightScale, 1); dummy.rotation.set(0, seededRandom() * Math.PI, 0); dummy.updateMatrix(); cliffMesh.setMatrixAt(idx++, dummy.matrix); } } scene.add(cliffMesh); }
-
-        // --- 3. 🌸 모델 로딩 ---
-        async function getModel(prefabName) {
-            if (prefabCache[prefabName]) return prefabCache[prefabName];
-            const path = `/assets/${prefabName}.glb`;
-            try {
-                const gltf = await loader.loadAsync(path);
-                prefabCache[prefabName] = gltf.scene;
-                return gltf.scene;
-            } catch (e) { return null; }
-        }
-
-        // --- 4. 🌸 꽃 생성 (비율 완벽 유지 & 애니메이션) ---
-        async function createFlower(data, isFromSocket = false) {
-            try {
-                /* ===============================
-                   🌱 Root / Visual 분리
-                =============================== */
-                const flowerRoot = new THREE.Group();    // 위치용 (땅 기준)
-                const flowerVisual = new THREE.Group();  // 스케일 / 회전용
-
-                flowerRoot.userData = {
-                    isFlower: true,
-                    isGrowing: true,
-                    growProgress: 0,
-                    swayOffset: Math.random() * 100,
-                    userName: data.userName,
-                    visual: flowerVisual
-                };
-
-                /* ===============================
-                   📍 위치 (땅 기준)
-                =============================== */
-                const x = Number(data.gardenX) || 0;
-                const z = Number(data.gardenZ) || 0;
-                const groundY = getTerrainHeight(x, z);
-
-                flowerRoot.position.set(x, groundY, z);
-
-                /* ===============================
-                   🌸 파츠 생성
-                =============================== */
-                const parts = Array.isArray(data.unityData) ? data.unityData : [];
-
-                for (const partData of parts) {
-                    const container = new THREE.Group();
-
-                    // 2D → 3D 위치
-                    container.position.set(
-                        partData.posX * PART_SPACING,
-                        partData.posY * PART_SPACING,
-                        partData.sortOrder * 0.1
-                    );
-
-                    // 회전
-                    container.rotation.z =
-                        THREE.MathUtils.degToRad(-partData.rotation);
-
-                    // 크기
-                    const s = partData.scaleX * PART_SIZE_SCALE;
-                    container.scale.set(s, s, s);
-
-                    // 슬라이더용 원본값 저장
-                    container.userData.originPos = {
-                        x: partData.posX,
-                        y: partData.posY
-                    };
-                    container.userData.originScale = partData.scaleX;
-
-                    // 모델 로드
-                    let mesh;
-                    const template = await getModel(partData.prefabName);
-                    if (template) {
-                        mesh = template.clone();
-                    } else {
-                        mesh = new THREE.Mesh(
-                            new THREE.BoxGeometry(1, 1, 0.2),
-                            new THREE.MeshBasicMaterial({ color: 0xff0000 })
-                        );
-                    }
-
-                    // 머티리얼
-                    const colorHex = partData.color.startsWith('#')
-                        ? partData.color
-                        : '#' + partData.color;
-
-                    const mat = new THREE.MeshStandardMaterial({
-                        color: new THREE.Color(colorHex),
-                        roughness: 0.6,
-                        metalness: 0.1,
-                        side: THREE.DoubleSide
+            // 💡 모델이 검게 나오지 않도록 재질 강제 부여
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({
+                        color: 0xFFD700,      // 밝은 노란색/금색
+                        metalness: 0.4,
+                        roughness: 0.3,
+                        emissive: 0x111100   // 어두운 곳에서도 살짝 색이 보이게 함
                     });
-
-                    mesh.traverse(c => {
-                        if (c.isMesh) {
-                            c.material = mat;
-                            c.castShadow = true;
-                            c.receiveShadow = true;
-                        }
-                    });
-
-                    // 모델 세우기
-                    mesh.rotation.x = -Math.PI / 2;
-
-                    container.add(mesh);
-                    flowerVisual.add(container);
                 }
-
-                /* ===============================
-                   🌱 pivot을 "맨 아래"로 정확히 이동
-                =============================== */
-                const box = new THREE.Box3().setFromObject(flowerVisual);
-
-                // 🔑 핵심: 최하단을 y = 0으로
-                flowerVisual.position.y = -box.min.y;
-
-                /* ===============================
-                   🏷 이름표
-                =============================== */
-                const nameDiv = document.createElement('div');
-                nameDiv.className = 'flower-label';
-                nameDiv.textContent = `${data.userName || '손님'}의 꽃`;
-
-                const label = new CSS2DObject(nameDiv);
-                label.position.set(
-                    0,
-                    box.max.y - box.min.y + 5,
-                    0
-                );
-                flowerVisual.add(label);
-
-                /* ===============================
-                   🌱 씬에 추가
-                =============================== */
-                flowerRoot.add(flowerVisual);
-
-                // 성장 애니메이션 시작값
-                flowerVisual.scale.set(0, 0, 0);
-
-                scene.add(flowerRoot);
-                flowers.push(flowerRoot);
-                addFlowerToList(data.userName || '손님', flowerRoot);
-
-                if (isFromSocket || data.userName === myName) {
-                    focusAndExplore(flowerRoot);
-                }
-
-            } catch (err) {
-                console.error("🌸 createFlower 에러:", err);
-            }
-        }
-
-
-
-
-        // --- 5. 📷 카메라 로직 (피어난 후 자유 탐색) ---
-
-        let isCameraLocked = false;    // 카메라가 강제로 움직이는 중인지
-        let lockTimer = null;          // 타이머
-
-        function focusAndExplore(flowerGroup) {
-            // 1. 카메라 강제 이동 시작
-            isCameraLocked = true;
-
-            const fPos = flowerGroup.position.clone();
-
-            // 목표: 꽃을 바라봄 (약간 위)
-            targetControlsTarget = fPos.clone().add(new THREE.Vector3(0, 5, 0));
-
-            // 위치: 꽃 앞쪽 위
-            // 현재 카메라 각도를 유지하면서 거리 좁힘
-            const direction = camera.position.clone().sub(controls.target).normalize();
-            targetCameraPos = fPos.clone().add(direction.multiplyScalar(20)).add(new THREE.Vector3(0, 5, 0));
-
-            // 2. 타이머 설정: 3.5초 후에 카메라 락 해제 (애니메이션이 끝날 때쯤)
-            if (lockTimer) clearTimeout(lockTimer);
-
-            lockTimer = setTimeout(() => {
-                isCameraLocked = false;       // 락 해제
-                targetCameraPos = null;       // 목표 위치 초기화
-                targetControlsTarget = null;  // 목표 타겟 초기화
-                console.log("🔓 자유 탐색 모드 전환!");
-            }, 3500); // 3.5초 후 해제
-        }
-
-        // UI 리스트에서 클릭했을 때도 동일하게 작동
-        function focusOnFlower(flowerGroup) {
-            focusAndExplore(flowerGroup);
-        }
-
-        function addFlowerToList(name, flowerGroup) {
-            const listContainer = document.getElementById('flower-list');
-            const item = document.createElement('div');
-            item.className = 'flower-item';
-            item.innerHTML = `<span class="flower-icon">🌼</span> ${name}`;
-            item.onclick = () => focusOnFlower(flowerGroup);
-            listContainer.prepend(item);
-        }
-
-        async function loadInitialFlowers() {
-            try {
-                const response = await fetch(`${SERVER_URL}/all-flowers`);
-                const allFlowers = await response.json();
-                for (const flowerData of allFlowers) await createFlower(flowerData, false);
-            } catch (e) { console.error(e); }
-        }
-
-        const socket = io(SERVER_URL);
-        socket.on("to_unity", (data) => createFlower(data, true));
-
-        // 인터랙션
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        let targetCameraPos = null; let targetControlsTarget = null;
-
-        window.addEventListener('pointerdown', (event) => {
-            if (event.target.closest('#ui-container')) return;
-            // 카메라가 락 걸려있으면 클릭 무시 (꽃 피는 중에는 방해 X)
-            if (isCameraLocked) return;
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(flowers, true);
-            if (intersects.length > 0) {
-                let targetGroup = intersects[0].object;
-                while (targetGroup.parent && targetGroup.parent.type !== 'Scene') targetGroup = targetGroup.parent;
-                if (targetGroup && targetGroup.userData.isFlower) { focusOnFlower(targetGroup); }
-            }
-        });
-
-        const clock = new THREE.Clock();
-        function animate() {
-            requestAnimationFrame(animate);
-            const time = clock.getElapsedTime();
-            controls.update();
-            grassUniforms.uTime.value = time; skyUniforms.uTime.value = time;
-
-            // 🔴 카메라 이동 (isCameraLocked 일 때만 강제 이동)
-            if (isCameraLocked && targetCameraPos && targetControlsTarget) {
-                camera.position.lerp(targetCameraPos, 0.05);
-                controls.target.lerp(targetControlsTarget, 0.05);
-            }
-
-            flowers.forEach(flower => {
-                if (flower.userData.isGrowing) {
-                    flower.userData.growProgress += 0.015; // 속도 조절
-                    let s = flower.userData.growProgress;
-                    // 탄성 효과 (Ease Out Back 느낌)
-                    let scale = s;
-                    if (s > 1) { s = 1; flower.userData.isGrowing = false; scale = 1; }
-
-                    flower.userData.visual.scale.set(
-                        scale * FLOWER_GLOBAL_SCALE,
-                        scale * FLOWER_GLOBAL_SCALE,
-                        scale * FLOWER_GLOBAL_SCALE
-                    );
-
-
-                }
-                flower.rotation.z = Math.sin(time * 1.5 + flower.userData.swayOffset) * 0.05;
             });
 
-            renderer.render(scene, camera);
-            labelRenderer.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            canGroup.add(model);
+            canGroup.position.set(0, 3.5, 0);
+            
+            const controls = new DragControls([canGroup], camera, renderer.domElement);
+            controls.transformGroup = true;
+            controls.addEventListener('dragstart', () => { isUserDragging = true; });
+            controls.addEventListener('dragend', () => { isUserDragging = false; });
+            isModelReady = true;
         });
 
-        createTerrain(); createGrass(); createTrees(); createRocks(); createCliffs();
-        loadInitialFlowers();
+        // --- 3. 파티클 (물방울) ---
+        const particleCount = 400;
+        const geom = new THREE.BufferGeometry();
+        const pos = new Float32Array(particleCount * 3);
+        const vel = new Float32Array(particleCount);
+        for (let i = 0; i < particleCount; i++) { pos[i * 3 + 1] = -500; vel[i] = -0.15 - Math.random() * 0.15; }
+        geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const pSystem = new THREE.Points(geom, new THREE.PointsMaterial({ color: 0x4fa3ff, size: 0.12, transparent: true, opacity: 0.7 }));
+        scene.add(pSystem);
+
+        // --- 4. 애니메이션 루프 ---
+        let wateringFrames = 0;
+        const REQUIRED_FRAMES = 180;
+
+        function animate() {
+            if (isFinished) return;
+            requestAnimationFrame(animate);
+            if (!canGroup || !isModelReady) return;
+
+            const dist = canGroup.position.distanceTo(flower.position);
+            const isNear = dist < 5.5;
+
+            let targetRotZ = (isUserDragging && isNear) ? -Math.PI / 4 : 0;
+            canGroup.rotation.z = THREE.MathUtils.lerp(canGroup.rotation.z, targetRotZ, 0.1);
+            
+            const isActuallyWatering = canGroup.rotation.z < -0.25;
+            pSystem.visible = isActuallyWatering;
+
+            if (isActuallyWatering) {
+                wateringFrames++;
+                const progress = Math.min(wateringFrames / REQUIRED_FRAMES, 1.0);
+                const currentScale = INITIAL_SCALE + (1.0 - INITIAL_SCALE) * progress;
+                flower.scale.set(currentScale, currentScale, currentScale);
+
+                const arr = geom.attributes.position.array;
+                const spoutPos = new THREE.Vector3();
+                spoutHelper.getWorldPosition(spoutPos);
+                for (let i = 0; i < particleCount; i++) {
+                    if (arr[i * 3 + 1] < -3) {
+                        arr[i * 3] = spoutPos.x + (Math.random()-0.5)*0.2;
+                        arr[i * 3 + 1] = spoutPos.y;
+                        arr[i * 3 + 2] = spoutPos.z;
+                    }
+                    arr[i * 3 + 1] += vel[i];
+                }
+                geom.attributes.position.needsUpdate = true;
+
+                if (wateringFrames >= REQUIRED_FRAMES) {
+                    finishWatering();
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        function finishWatering() {
+            if (isFinished) return;
+            isFinished = true;
+            scene.remove(canGroup);
+            scene.remove(pSystem);
+            flower.scale.set(1, 1, 1);
+            renderer.render(scene, camera);
+
+            const btn = document.getElementById('finish-btn');
+            if (btn) {
+                btn.classList.remove('hidden');
+                btn.classList.add('visible');
+            }
+        }
+
         animate();
+        window.addEventListener('resize', () => {
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+        });
     </script>
 </body>
 

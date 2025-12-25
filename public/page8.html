@@ -3,238 +3,300 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Sejong Bloom - 물 주기</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="styleflowergrow.css">
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sejong Bloom - 꽃 만들기</title>
+    <link rel="stylesheet" href="styleflower.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 </head>
 
 <body>
-
-    <div class="container">
-        <div class="bg_container">
-            <img src="/assets/phone11.jpg" alt="background">
+    <div class="step2box">
+        <div class="img_container">
+            <img src="/assets/phone10.jpg" alt="background">
         </div>
+        <div class="step2-container">
+            <div class="step2-header">
+                <p class="step-subtitle" id="step2-sub-msg">로딩 중...</p>
+                <h2 class="main-question">꽃은 어떻게 생겼을까?</h2>
+                <p class="step-subtitle-guide"> 모양과 색을 골라 꽃을 만들어보자! </p>
+            </div>
 
-        <div id="watering-canvas-container"></div>
+            <div class="controls-wrapper">
+                <div class="palette-row">
+                    <span class="control-label" style="font-family: 'UhBeeZIGLE';">모양 (Shape)</span>
+                    <div id="flower-palette-container" class="scroll-palette"></div>
+                </div>
 
-        <button id="finish-btn" class="next-btn hidden" onclick="window.sendAndMove()">
-            다 자랐다!!!
-        </button>
+                <div class="palette-row">
+                    <span class="control-label" style="font-family: 'UhBeeZIGLE';">색상 (Color)</span>
+                    <div id="color-palette" class="scroll-palette"></div>
+                </div>
+            </div>
+
+            <div class="canvas-wrapper">
+                <canvas id="c"></canvas>
+                <div id="delete-zone" class="hidden">
+                    <div class="trash-icon-bg"></div>
+                </div>
+            </div>
+
+            <button class="finish-btn" onclick="saveAndMove()">완성하기</button>
+        </div>
     </div>
 
     <script>
         /* ============================================================
-           1. 서버 전송 및 페이지 이동 로직
+           1. 사용자 정보 로드 (localStorage 전환)
         ============================================================ */
-        window.sendAndMove = function () {
-            const btn = document.getElementById('finish-btn');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerText = "전송 중...";
-            }
+        const storedName = localStorage.getItem('userName') || "테스트";
+        const storedDistrict = localStorage.getItem('userDistrict') || "dodam";
 
-            const storedData = localStorage.getItem('flowerData');
-            if (!storedData) {
-                alert("저장된 꽃 데이터가 없습니다.");
-                window.location.href = 'index.html';
-                return;
-            }
-
-            try {
-                const data = JSON.parse(storedData);
-                // 🔴 서버 IP 주소를 본인의 AWS 서버 IP로 확인하세요!
-                const socket = io("http://15.134.86.182:3000", {
-                    transports: ['websocket'],
-                    reconnectionAttempts: 1,
-                    timeout: 2000
-                });
-
-                socket.on('connect', () => {
-                    socket.emit("submit_flower", data);
-                    setTimeout(() => {
-                        alert("세종시 정원에 꽃을 심었습니다!");
-                        window.location.href = 'page9.html';
-                    }, 500);
-                });
-
-                socket.on('connect_error', () => { window.location.href = 'page9.html'; });
-                setTimeout(() => { window.location.href = 'page9.html'; }, 2500);
-
-            } catch (e) {
-                window.location.href = 'page9.html';
-            }
+        const districtNames = {
+            'eojindong': '어진동', 'dodam': '도담동', 'areum': '아름동',
+            'hamildong': '한솔동', 'naseongdong': '나성동', 'bangok_jiphyeon': '반곡·집현동',
+            'jochiwon': '조치원읍', 'jeonui_myeon': '전의면', 'yeonseomyeon': '연서면',
+            'bugangmyeon': '부강면', 'geumnammyeon': '금남면', 'yeongimyeon': '연기면',
+            'janggunmyeon': '장군면', 'yeondongmyeon': '연동면', 'otherarea': '기타 지역'
         };
-    </script>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        const districtKr = districtNames[storedDistrict] || "세종시";
+        document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
+
+        const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7', '#FFD43B', '#69DB7C', '#FCC2D7'];
+        
+        const districtShapes = {
+            'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
+            'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
+            'areum': ['F1', 'F2', 'F3', 'F12', 'F13', 'F14', 'F15'],
+            'hamildong': ['F1', 'F2', 'F3', 'F16', 'F17', 'F18', 'F19'],
+            'naseongdong': ['F1', 'F2', 'F3', 'F20', 'F21', 'F22', 'F23'],
+            'bangok_jiphyeon': ['F1', 'F2', 'F3', 'F24', 'F25', 'F26', 'F27'],
+            'jochiwon': ['F1', 'F2', 'F3', 'F28', 'F29', 'F30', 'F31'],
+            'jeonui_myeon': ['F1', 'F2', 'F3', 'F15', 'F30', 'F32', 'F33'],
+            'yeonseomyeon': ['F1', 'F2', 'F3', 'F6', 'F8', 'F13', 'F34'],
+            'bugangmyeon': ['F1', 'F2', 'F3', 'F35', 'F36', 'F37', 'F38'],
+            'geumnammyeon': ['F1', 'F2', 'F3', 'F14', 'F26', 'F36', 'F39'],
+            'yeongimyeon': ['F1', 'F2', 'F3', 'F32', 'F40', 'F41', 'F42'],
+            'janggunmyeon': ['F1', 'F2', 'F3', 'F13', 'F43', 'F44', 'F45'],
+            'yeondongmyeon': ['F1', 'F2', 'F3', 'F22', 'F36', 'F44', 'F46'],
+            'otherarea': ['F1', 'F2', 'F3', 'F11', 'F35', 'F47', 'F48']
+        };
+
+        const myShapes = districtShapes[storedDistrict] || ['F1', 'F2', 'F3'];
+        let currentSelectedColor = colorList[0];
+
+        /* ============================================================
+           2. 캔버스 초기화
+        ============================================================ */
+        const canvas = new fabric.Canvas('c', { preserveObjectStacking: true });
+        canvas.backgroundColor = 'transparent';
+
+        function moveSelectedToFront(e) {
+            if (e.selected && e.selected.length > 0) {
+                e.selected.forEach(obj => canvas.bringToFront(obj));
+                canvas.renderAll();
             }
         }
-    </script>
+        canvas.on('selection:created', moveSelectedToFront);
+        canvas.on('selection:updated', moveSelectedToFront);
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { DragControls } from 'three/addons/controls/DragControls.js';
+        window.onload = function () {
+            resizeCanvas();
+            initColorPalette();
+            generatePalette(myShapes);
+        };
 
-        // --- 전역 상태 변수 ---
-        let isFinished = false;
+        window.addEventListener('resize', resizeCanvas);
 
-        const container = document.querySelector('.container');
-        let width = container.clientWidth;
-        let height = container.clientHeight;
-
-        const scene = new THREE.Scene();
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(width, height);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.getElementById('watering-canvas-container').appendChild(renderer.domElement);
-
-        const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-        camera.position.set(0, 1, 10);
-
-        // --- 💡 조명 설정 (밝게 수정) ---
-        scene.add(new THREE.AmbientLight(0xffffff, 2.0)); // 전체 밝기 상향
-        const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        dirLight.position.set(5, 10, 10);
-        scene.add(dirLight);
-
-        // --- 1. 내 꽃 이미지 로드 ---
-        const savedDataString = localStorage.getItem('flowerData');
-        let flowerTexture = null;
-        if (savedDataString) {
-            try {
-                const flowerData = JSON.parse(savedDataString);
-                if (flowerData.previewImage) flowerTexture = new THREE.TextureLoader().load(flowerData.previewImage);
-            } catch (e) { }
+        function resizeCanvas() {
+            const wrapper = document.querySelector('.canvas-wrapper');
+            if (wrapper) {
+                const size = wrapper.clientWidth;
+                canvas.setWidth(size);
+                canvas.setHeight(size);
+                canvas.renderAll();
+            }
         }
 
-        const flower = new THREE.Mesh(
-            new THREE.PlaneGeometry(6, 6),
-            flowerTexture ? new THREE.MeshBasicMaterial({ map: flowerTexture, transparent: true, side: THREE.DoubleSide }) : new THREE.MeshStandardMaterial({ color: 0xff6b6b })
-        );
-        flower.position.set(0, -3, 0);
-        const INITIAL_SCALE = 0.1;
-        flower.scale.set(INITIAL_SCALE, INITIAL_SCALE, INITIAL_SCALE);
-        scene.add(flower);
+        /* ============================================================
+           3. 팔레트 UI 로직
+        ============================================================ */
+        function initColorPalette() {
+            const container = document.getElementById('color-palette');
+            container.innerHTML = '';
+            colorList.forEach((color, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'color-btn';
+                if (idx === 0) btn.classList.add('active');
+                btn.style.backgroundColor = color;
+                btn.onclick = () => selectColor(btn, color);
+                container.appendChild(btn);
+            });
+        }
 
-        // --- 2. 물뿌리개 로드 및 재질 수정 ---
-        let canGroup = new THREE.Group();
-        scene.add(canGroup);
-        const spoutHelper = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ visible: false }));
-        spoutHelper.position.set(1.8, 0.5, 0);
-        canGroup.add(spoutHelper);
+        function selectColor(btn, color) {
+            currentSelectedColor = color;
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
 
-        const loader = new GLTFLoader();
-        let isModelReady = false;
-        let isUserDragging = false;
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                applyColor(activeObj, color);
+                canvas.renderAll();
+            }
+            updateShapeButtons(color);
+        }
 
-        loader.load('./assets/Watering_Can.glb', (gltf) => {
-            const model = gltf.scene;
-            model.scale.set(0.05, 0.05, 0.05);
+        async function generatePalette(shapes) {
+            const container = document.getElementById('flower-palette-container');
+            container.innerHTML = '';
+            for (let shape of shapes) {
+                const filePath = `assets/${shape}.svg`;
+                try {
+                    const res = await fetch(filePath);
+                    if (!res.ok) throw new Error('SVG Load Fail');
+                    let svgText = await res.text();
+                    const btn = document.createElement('div');
+                    btn.className = 'shape-btn';
+                    btn.dataset.svg = svgText;
+                    btn.dataset.type = shape;
+                    btn.innerHTML = svgText.replace(/fill="[^"]*"/g, `fill="${currentSelectedColor}"`);
+                    btn.onclick = () => addShapeToCanvas(shape, currentSelectedColor);
+                    container.appendChild(btn);
+                } catch (e) { console.warn(e); }
+            }
+        }
 
-            // 💡 모델이 검게 나오지 않도록 재질 강제 부여
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    child.material = new THREE.MeshStandardMaterial({
-                        color: 0xFFD700,      // 밝은 노란색/금색
-                        metalness: 0.4,
-                        roughness: 0.3,
-                        emissive: 0x111100   // 어두운 곳에서도 살짝 색이 보이게 함
-                    });
+        function updateShapeButtons(color) {
+            document.querySelectorAll('.shape-btn').forEach(btn => {
+                const svg = btn.dataset.svg;
+                if (svg) btn.innerHTML = svg.replace(/fill="[^"]*"/g, `fill="${color}"`);
+            });
+        }
+
+        /* ============================================================
+           4. 객체 추가 및 삭제 로직
+        ============================================================ */
+        function addShapeToCanvas(type, color) {
+            fabric.loadSVGFromURL(`assets/${type}.svg`, (objects, options) => {
+                const obj = fabric.util.groupSVGElements(objects, options);
+                applyColor(obj, color);
+                const canvasWidth = canvas.getWidth();
+                const initialScale = (canvasWidth * 0.3) / Math.max(obj.width, obj.height);
+                const center = canvas.getCenter();
+
+                obj.set({
+                    left: center.left, top: center.top,
+                    originX: 'center', originY: 'center',
+                    lockUniScaling: true,
+                    snapAngle: 30,
+                    cornerColor: 'rgba(0,0,0,0.5)',
+                    transparentCorners: false
+                });
+
+                obj.setControlsVisibility({ mt: false, mb: false, ml: false, mr: false });
+                obj.userColor = color;
+                obj.type = type;
+
+                canvas.add(obj);
+                canvas.setActiveObject(obj);
+                canvas.bringToFront(obj);
+
+                obj.animate('scaleX', initialScale, { duration: 400, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
+                obj.animate('scaleY', initialScale, { duration: 400, easing: fabric.util.ease.easeOutBack });
+            });
+        }
+
+        function applyColor(obj, color) {
+            obj.userColor = color;
+            if (obj.isType('group')) {
+                obj.getObjects().forEach(o => { if (o.fill !== 'none') o.set('fill', color); });
+            } else { obj.set('fill', color); }
+        }
+
+        const deleteZone = document.getElementById('delete-zone');
+        canvas.on('object:moving', (e) => {
+            deleteZone.classList.remove('hidden');
+            if (e.target.top > canvas.getHeight() * 0.8) {
+                deleteZone.classList.add('delete-active');
+                e.target.opacity = 0.5;
+            } else {
+                deleteZone.classList.remove('delete-active');
+                e.target.opacity = 1;
+            }
+        });
+
+        canvas.on('mouse:up', () => {
+            const obj = canvas.getActiveObject();
+            deleteZone.classList.add('hidden');
+            deleteZone.classList.remove('delete-active');
+            if (obj && obj.top > canvas.getHeight() * 0.8) {
+                canvas.remove(obj);
+                canvas.discardActiveObject();
+                canvas.renderAll();
+            }
+        });
+
+        /* ============================================================
+           5. 저장 및 정규화 (유니티 호환 버전)
+        ============================================================ */
+        function saveAndMove() {
+            canvas.discardActiveObject();
+            canvas.renderAll();
+
+            const objects = canvas.getObjects();
+            if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            objects.forEach(obj => {
+                const coords = obj.aCoords;
+                for (let key in coords) {
+                    const p = coords[key];
+                    if (p.x < minX) minX = p.x;
+                    if (p.y < minY) minY = p.y;
+                    if (p.x > maxX) maxX = p.x;
+                    if (p.y > maxY) maxY = p.y;
                 }
             });
 
-            canGroup.add(model);
-            canGroup.position.set(0, 3.5, 0);
-            
-            const controls = new DragControls([canGroup], camera, renderer.domElement);
-            controls.transformGroup = true;
-            controls.addEventListener('dragstart', () => { isUserDragging = true; });
-            controls.addEventListener('dragend', () => { isUserDragging = false; });
-            isModelReady = true;
-        });
+            const centerX = minX + (maxX - minX) / 2;
+            const bottomY = maxY;
+            const normalizeRatio = 1.0 / canvas.getWidth();
 
-        // --- 3. 파티클 (물방울) ---
-        const particleCount = 400;
-        const geom = new THREE.BufferGeometry();
-        const pos = new Float32Array(particleCount * 3);
-        const vel = new Float32Array(particleCount);
-        for (let i = 0; i < particleCount; i++) { pos[i * 3 + 1] = -500; vel[i] = -0.15 - Math.random() * 0.15; }
-        geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        const pSystem = new THREE.Points(geom, new THREE.PointsMaterial({ color: 0x4fa3ff, size: 0.12, transparent: true, opacity: 0.7 }));
-        scene.add(pSystem);
+            const unityDataList = objects.map((o, index) => ({
+                prefabName: o.type || 'petal_prefab',
+                color: o.userColor || '#FF9AA2',
+                posX: parseFloat(((o.left - centerX) * normalizeRatio).toFixed(6)),
+                posY: parseFloat(((bottomY - o.top) * normalizeRatio).toFixed(6)),
+                scaleX: parseFloat((o.scaleX * normalizeRatio).toFixed(6)),
+                scaleY: parseFloat((o.scaleY * normalizeRatio).toFixed(6)),
+                rotation: -o.angle,
+                sortOrder: index
+            }));
 
-        // --- 4. 애니메이션 루프 ---
-        let wateringFrames = 0;
-        const REQUIRED_FRAMES = 180;
+            const flowerImageUrl = canvas.toDataURL({
+                format: 'png', quality: 1.0, multiplier: 2,
+                left: minX, top: minY, width: maxX - minX, height: maxY - minY
+            });
 
-        function animate() {
-            if (isFinished) return;
-            requestAnimationFrame(animate);
-            if (!canGroup || !isModelReady) return;
+            const data = {
+                userName: storedName,
+                location: storedDistrict,
+                unityData: unityDataList,
+                previewImage: flowerImageUrl
+            };
 
-            const dist = canGroup.position.distanceTo(flower.position);
-            const isNear = dist < 5.5;
+            // DB 전송을 위해 localStorage에 저장
+            localStorage.setItem('flowerData', JSON.stringify(data));
+            localStorage.setItem('userName', storedName);
 
-            let targetRotZ = (isUserDragging && isNear) ? -Math.PI / 4 : 0;
-            canGroup.rotation.z = THREE.MathUtils.lerp(canGroup.rotation.z, targetRotZ, 0.1);
-            
-            const isActuallyWatering = canGroup.rotation.z < -0.25;
-            pSystem.visible = isActuallyWatering;
-
-            if (isActuallyWatering) {
-                wateringFrames++;
-                const progress = Math.min(wateringFrames / REQUIRED_FRAMES, 1.0);
-                const currentScale = INITIAL_SCALE + (1.0 - INITIAL_SCALE) * progress;
-                flower.scale.set(currentScale, currentScale, currentScale);
-
-                const arr = geom.attributes.position.array;
-                const spoutPos = new THREE.Vector3();
-                spoutHelper.getWorldPosition(spoutPos);
-                for (let i = 0; i < particleCount; i++) {
-                    if (arr[i * 3 + 1] < -3) {
-                        arr[i * 3] = spoutPos.x + (Math.random()-0.5)*0.2;
-                        arr[i * 3 + 1] = spoutPos.y;
-                        arr[i * 3 + 2] = spoutPos.z;
-                    }
-                    arr[i * 3 + 1] += vel[i];
-                }
-                geom.attributes.position.needsUpdate = true;
-
-                if (wateringFrames >= REQUIRED_FRAMES) {
-                    finishWatering();
-                }
-            }
-            renderer.render(scene, camera);
+            console.log("전송 대기 데이터:", data);
+            alert("저장되었습니다!");
+            window.location.href = 'page9.html';
         }
-
-        function finishWatering() {
-            if (isFinished) return;
-            isFinished = true;
-            scene.remove(canGroup);
-            scene.remove(pSystem);
-            flower.scale.set(1, 1, 1);
-            renderer.render(scene, camera);
-
-            const btn = document.getElementById('finish-btn');
-            if (btn) {
-                btn.classList.remove('hidden');
-                btn.classList.add('visible');
-            }
-        }
-
-        animate();
-        window.addEventListener('resize', () => {
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-        });
     </script>
 </body>
 

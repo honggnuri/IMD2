@@ -1,303 +1,73 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sejong Bloom - 꽃 만들기</title>
-    <link rel="stylesheet" href="styleflower.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <title>Sejong Bloom</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <div class="step2box">
-        <div class="img_container">
-            <img src="/assets/phone10.jpg" alt="background">
+    <div class="container">
+        <div id="step-1" class="img_container">
+            <img id="main-image" src="/assets/phone06.jpg" alt="Step Image">
         </div>
-        <div class="step2-container">
-            <div class="step2-header">
-                <p class="step-subtitle" id="step2-sub-msg">로딩 중...</p>
-                <h2 class="main-question">꽃은 어떻게 생겼을까?</h2>
-                <p class="step-subtitle-guide"> 모양과 색을 골라 꽃을 만들어보자! </p>
-            </div>
-
-            <div class="controls-wrapper">
-                <div class="palette-row">
-                    <span class="control-label" style="font-family: 'UhBeeZIGLE';">모양 (Shape)</span>
-                    <div id="flower-palette-container" class="scroll-palette"></div>
-                </div>
-
-                <div class="palette-row">
-                    <span class="control-label" style="font-family: 'UhBeeZIGLE';">색상 (Color)</span>
-                    <div id="color-palette" class="scroll-palette"></div>
-                </div>
-            </div>
-
-            <div class="canvas-wrapper">
-                <canvas id="c"></canvas>
-                <div id="delete-zone" class="hidden">
-                    <div class="trash-icon-bg"></div>
-                </div>
-            </div>
-
-            <button class="finish-btn" onclick="saveAndMove()">완성하기</button>
-        </div>
+        <button id="next-btn" class="next-btn" onclick="handleButtonClick()">응!</button>
     </div>
 
     <script>
-        /* ============================================================
-           1. 사용자 정보 로드 (localStorage 전환)
-        ============================================================ */
-        const storedName = localStorage.getItem('userName') || "테스트";
-        const storedDistrict = localStorage.getItem('userDistrict') || "dodam";
+        let clickCount = 0;
 
-        const districtNames = {
-            'eojindong': '어진동', 'dodam': '도담동', 'areum': '아름동',
-            'hamildong': '한솔동', 'naseongdong': '나성동', 'bangok_jiphyeon': '반곡·집현동',
-            'jochiwon': '조치원읍', 'jeonui_myeon': '전의면', 'yeonseomyeon': '연서면',
-            'bugangmyeon': '부강면', 'geumnammyeon': '금남면', 'yeongimyeon': '연기면',
-            'janggunmyeon': '장군면', 'yeondongmyeon': '연동면', 'otherarea': '기타 지역'
+        // 1. 이전 페이지에서 선택한 동네 정보 가져오기
+        const storedDistrict = localStorage.getItem('userDistrict') || 'dodam';
+
+        // 2. [매칭 테이블] 동네별 이미지 설정
+        // first: 접속하자마자 보일 이미지 / second: 버튼 1번 누른 후 보일 이미지
+        const districtContent = {
+            'eojindong': { first: '/assets/eojin_01.jpg', second: '/assets/eojin_02.jpg' },
+            'dodam': { first: '/assets/dodam_01.jpg', second: '/assets/dodam_02.jpg' },
+            'areum': { first: '/assets/areum_01.jpg', second: '/assets/areum_02.jpg' },
+            'hamildong': { first: '/assets/hamil_01.jpg', second: '/assets/hamil_02.jpg' },
+            'naseongdong': { first: '/assets/naseong_01.jpg', second: '/assets/naseong_02.jpg' },
+            'bangok_jiphyeon': { first: '/assets/bangok_01.jpg', second: '/assets/bangok_02.jpg' },
+            'jochiwon': { first: '/assets/jochiwon_01.jpg', second: '/assets/jochiwon_02.jpg' },
+            'jeonui_myeon': { first: '/assets/jeonui_01.jpg', second: '/assets/jeonui_02.jpg' },
+            'yeonseomyeon': { first: '/assets/yeonseo_01.jpg', second: '/assets/yeonseo_02.jpg' },
+            'bugangmyeon': { first: '/assets/bugang_01.jpg', second: '/assets/bugang_02.jpg' },
+            'geumnammyeon': { first: '/assets/geumnam_01.jpg', second: '/assets/geumnam_02.jpg' },
+            'yeongimyeon': { first: '/assets/yeongi_01.jpg', second: '/assets/yeongi_02.jpg' },
+            'janggunmyeon': { first: '/assets/janggun_01.jpg', second: '/assets/janggun_02.jpg' },
+            'yeondongmyeon': { first: '/assets/yeondong_01.jpg', second: '/assets/yeondong_02.jpg' },
+            'otherarea': { first: '/assets/other_01.jpg', second: '/assets/other_02.jpg' }
         };
 
-        const districtKr = districtNames[storedDistrict] || "세종시";
-        document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
+        const imgElement = document.getElementById('main-image');
+        const btnElement = document.getElementById('next-btn');
 
-        const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7', '#FFD43B', '#69DB7C', '#FCC2D7'];
-        
-        const districtShapes = {
-            'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
-            'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
-            'areum': ['F1', 'F2', 'F3', 'F12', 'F13', 'F14', 'F15'],
-            'hamildong': ['F1', 'F2', 'F3', 'F16', 'F17', 'F18', 'F19'],
-            'naseongdong': ['F1', 'F2', 'F3', 'F20', 'F21', 'F22', 'F23'],
-            'bangok_jiphyeon': ['F1', 'F2', 'F3', 'F24', 'F25', 'F26', 'F27'],
-            'jochiwon': ['F1', 'F2', 'F3', 'F28', 'F29', 'F30', 'F31'],
-            'jeonui_myeon': ['F1', 'F2', 'F3', 'F15', 'F30', 'F32', 'F33'],
-            'yeonseomyeon': ['F1', 'F2', 'F3', 'F6', 'F8', 'F13', 'F34'],
-            'bugangmyeon': ['F1', 'F2', 'F3', 'F35', 'F36', 'F37', 'F38'],
-            'geumnammyeon': ['F1', 'F2', 'F3', 'F14', 'F26', 'F36', 'F39'],
-            'yeongimyeon': ['F1', 'F2', 'F3', 'F32', 'F40', 'F41', 'F42'],
-            'janggunmyeon': ['F1', 'F2', 'F3', 'F13', 'F43', 'F44', 'F45'],
-            'yeondongmyeon': ['F1', 'F2', 'F3', 'F22', 'F36', 'F44', 'F46'],
-            'otherarea': ['F1', 'F2', 'F3', 'F11', 'F35', 'F47', 'F48']
+        // 3. [초기 실행] 페이지 접속하자마자 첫 번째 이미지 세팅
+        window.onload = function() {
+            if (districtContent[storedDistrict]) {
+                imgElement.src = districtContent[storedDistrict].first;
+            }
         };
 
-        const myShapes = districtShapes[storedDistrict] || ['F1', 'F2', 'F3'];
-        let currentSelectedColor = colorList[0];
+        // 4. [클릭 이벤트] 버튼 동작
+        function handleButtonClick() {
+            clickCount++;
 
-        /* ============================================================
-           2. 캔버스 초기화
-        ============================================================ */
-        const canvas = new fabric.Canvas('c', { preserveObjectStacking: true });
-        canvas.backgroundColor = 'transparent';
-
-        function moveSelectedToFront(e) {
-            if (e.selected && e.selected.length > 0) {
-                e.selected.forEach(obj => canvas.bringToFront(obj));
-                canvas.renderAll();
-            }
-        }
-        canvas.on('selection:created', moveSelectedToFront);
-        canvas.on('selection:updated', moveSelectedToFront);
-
-        window.onload = function () {
-            resizeCanvas();
-            initColorPalette();
-            generatePalette(myShapes);
-        };
-
-        window.addEventListener('resize', resizeCanvas);
-
-        function resizeCanvas() {
-            const wrapper = document.querySelector('.canvas-wrapper');
-            if (wrapper) {
-                const size = wrapper.clientWidth;
-                canvas.setWidth(size);
-                canvas.setHeight(size);
-                canvas.renderAll();
-            }
-        }
-
-        /* ============================================================
-           3. 팔레트 UI 로직
-        ============================================================ */
-        function initColorPalette() {
-            const container = document.getElementById('color-palette');
-            container.innerHTML = '';
-            colorList.forEach((color, idx) => {
-                const btn = document.createElement('div');
-                btn.className = 'color-btn';
-                if (idx === 0) btn.classList.add('active');
-                btn.style.backgroundColor = color;
-                btn.onclick = () => selectColor(btn, color);
-                container.appendChild(btn);
-            });
-        }
-
-        function selectColor(btn, color) {
-            currentSelectedColor = color;
-            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const activeObj = canvas.getActiveObject();
-            if (activeObj) {
-                applyColor(activeObj, color);
-                canvas.renderAll();
-            }
-            updateShapeButtons(color);
-        }
-
-        async function generatePalette(shapes) {
-            const container = document.getElementById('flower-palette-container');
-            container.innerHTML = '';
-            for (let shape of shapes) {
-                const filePath = `assets/${shape}.svg`;
-                try {
-                    const res = await fetch(filePath);
-                    if (!res.ok) throw new Error('SVG Load Fail');
-                    let svgText = await res.text();
-                    const btn = document.createElement('div');
-                    btn.className = 'shape-btn';
-                    btn.dataset.svg = svgText;
-                    btn.dataset.type = shape;
-                    btn.innerHTML = svgText.replace(/fill="[^"]*"/g, `fill="${currentSelectedColor}"`);
-                    btn.onclick = () => addShapeToCanvas(shape, currentSelectedColor);
-                    container.appendChild(btn);
-                } catch (e) { console.warn(e); }
-            }
-        }
-
-        function updateShapeButtons(color) {
-            document.querySelectorAll('.shape-btn').forEach(btn => {
-                const svg = btn.dataset.svg;
-                if (svg) btn.innerHTML = svg.replace(/fill="[^"]*"/g, `fill="${color}"`);
-            });
-        }
-
-        /* ============================================================
-           4. 객체 추가 및 삭제 로직
-        ============================================================ */
-        function addShapeToCanvas(type, color) {
-            fabric.loadSVGFromURL(`assets/${type}.svg`, (objects, options) => {
-                const obj = fabric.util.groupSVGElements(objects, options);
-                applyColor(obj, color);
-                const canvasWidth = canvas.getWidth();
-                const initialScale = (canvasWidth * 0.3) / Math.max(obj.width, obj.height);
-                const center = canvas.getCenter();
-
-                obj.set({
-                    left: center.left, top: center.top,
-                    originX: 'center', originY: 'center',
-                    lockUniScaling: true,
-                    snapAngle: 30,
-                    cornerColor: 'rgba(0,0,0,0.5)',
-                    transparentCorners: false
-                });
-
-                obj.setControlsVisibility({ mt: false, mb: false, ml: false, mr: false });
-                obj.userColor = color;
-                obj.type = type;
-
-                canvas.add(obj);
-                canvas.setActiveObject(obj);
-                canvas.bringToFront(obj);
-
-                obj.animate('scaleX', initialScale, { duration: 400, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
-                obj.animate('scaleY', initialScale, { duration: 400, easing: fabric.util.ease.easeOutBack });
-            });
-        }
-
-        function applyColor(obj, color) {
-            obj.userColor = color;
-            if (obj.isType('group')) {
-                obj.getObjects().forEach(o => { if (o.fill !== 'none') o.set('fill', color); });
-            } else { obj.set('fill', color); }
-        }
-
-        const deleteZone = document.getElementById('delete-zone');
-        canvas.on('object:moving', (e) => {
-            deleteZone.classList.remove('hidden');
-            if (e.target.top > canvas.getHeight() * 0.8) {
-                deleteZone.classList.add('delete-active');
-                e.target.opacity = 0.5;
-            } else {
-                deleteZone.classList.remove('delete-active');
-                e.target.opacity = 1;
-            }
-        });
-
-        canvas.on('mouse:up', () => {
-            const obj = canvas.getActiveObject();
-            deleteZone.classList.add('hidden');
-            deleteZone.classList.remove('delete-active');
-            if (obj && obj.top > canvas.getHeight() * 0.8) {
-                canvas.remove(obj);
-                canvas.discardActiveObject();
-                canvas.renderAll();
-            }
-        });
-
-        /* ============================================================
-           5. 저장 및 정규화 (유니티 호환 버전)
-        ============================================================ */
-        function saveAndMove() {
-            canvas.discardActiveObject();
-            canvas.renderAll();
-
-            const objects = canvas.getObjects();
-            if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
-
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            objects.forEach(obj => {
-                const coords = obj.aCoords;
-                for (let key in coords) {
-                    const p = coords[key];
-                    if (p.x < minX) minX = p.x;
-                    if (p.y < minY) minY = p.y;
-                    if (p.x > maxX) maxX = p.x;
-                    if (p.y > maxY) maxY = p.y;
+            if (clickCount === 1) {
+                // --- 첫 번째 클릭: 해당 동네의 두 번째 이미지로 변경 ---
+                if (districtContent[storedDistrict]) {
+                    imgElement.src = districtContent[storedDistrict].second;
                 }
-            });
+                
+                // 버튼 텍스트 변경
+                btnElement.innerText = '꽃 만들러 가기';
 
-            const centerX = minX + (maxX - minX) / 2;
-            const bottomY = maxY;
-            const normalizeRatio = 1.0 / canvas.getWidth();
-
-            const unityDataList = objects.map((o, index) => ({
-                prefabName: o.type || 'petal_prefab',
-                color: o.userColor || '#FF9AA2',
-                posX: parseFloat(((o.left - centerX) * normalizeRatio).toFixed(6)),
-                posY: parseFloat(((bottomY - o.top) * normalizeRatio).toFixed(6)),
-                scaleX: parseFloat((o.scaleX * normalizeRatio).toFixed(6)),
-                scaleY: parseFloat((o.scaleY * normalizeRatio).toFixed(6)),
-                rotation: -o.angle,
-                sortOrder: index
-            }));
-
-            const flowerImageUrl = canvas.toDataURL({
-                format: 'png', quality: 1.0, multiplier: 2,
-                left: minX, top: minY, width: maxX - minX, height: maxY - minY
-            });
-
-            const data = {
-                userName: storedName,
-                location: storedDistrict,
-                unityData: unityDataList,
-                previewImage: flowerImageUrl
-            };
-
-            // DB 전송을 위해 localStorage에 저장
-            localStorage.setItem('flowerData', JSON.stringify(data));
-            localStorage.setItem('userName', storedName);
-
-            console.log("전송 대기 데이터:", data);
-            alert("저장되었습니다!");
-            window.location.href = 'page8.html';
+            } else if (clickCount === 2) {
+                // --- 두 번째 클릭: 다음 페이지로 이동 ---
+                location.href = 'page8.html'; 
+            }
         }
     </script>
 </body>
-
 </html>
