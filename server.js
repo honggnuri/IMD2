@@ -6,17 +6,17 @@ const mysql = require('mysql2/promise');
 
 const app = express();
 app.use(cors());
+app.use(express.json()); // JSON 파싱 미들웨어 추가
 
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// 🔴 AWS RDS 연결 설정 (본인 정보로 수정 필수)
 const dbConfig = {
     host: 'serverflowerdb.cbac0os8o7si.ap-southeast-2.rds.amazonaws.com',
     user: 'nurihong',
-    password: '10834홍누리!', // 👈 여기에 실제 비밀번호 입력
+    password: '10834Ghdsnfl!', 
     database: 'serverflowerdb',
     waitForConnections: true,
     connectionLimit: 10
@@ -24,26 +24,36 @@ const dbConfig = {
 
 const pool = mysql.createPool(dbConfig);
 
-// DB 연결 체크
+// 서버가 살아있는지 확인하는 기본 경로 추가
+app.get('/', (req, res) => {
+    res.send('<h1>🌸 Sejong Bloom Server is Running!</h1><p>접속 가능 확인됨</p>');
+});
+
 pool.getConnection().then(conn => {
     console.log("✅ AWS RDS 연결 성공!");
     conn.release();
-}).catch(err => console.error("❌ DB 연결 실패:", err));
+}).catch(err => {
+    console.error("❌ DB 연결 실패! 정보가 정확한지 확인하세요.");
+    console.error(err);
+});
 
-// 1. 모든 꽃 데이터 가져오기
 app.get('/all-flowers', async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM flowers ORDER BY id DESC');
         const formatted = rows.map(row => ({
             ...row,
-            unityData: JSON.parse(row.unityData)
+            unityData: typeof row.unityData === 'string' ? JSON.parse(row.unityData) : row.unityData
         }));
         res.json(formatted);
-    } catch (err) { res.status(500).send(err.message); }
+    } catch (err) { 
+        console.error("GET Error:", err);
+        res.status(500).send(err.message); 
+    }
 });
 
-// 2. 소켓 통신 및 DB 저장
 io.on('connection', (socket) => {
+    console.log('👤 신규 접속:', socket.id);
+
     socket.on('submit_flower', async (data) => {
         const gardenX = (Math.random() - 0.5) * 200;
         const gardenZ = (Math.random() - 0.5) * 200;
@@ -55,10 +65,22 @@ io.on('connection', (socket) => {
                 data.userName, data.location, gardenX, gardenZ,
                 JSON.stringify(data.unityData), data.previewImage
             ]);
-            io.emit('to_unity', completeData); // 모든 클라이언트에 전송
-            console.log("💾 DB 저장 및 전송 완료:", data.userName);
-        } catch (err) { console.error("❌ 저장 실패:", err); }
+            io.emit('to_unity', completeData);
+            console.log("💾 DB 저장 완료:", data.userName);
+        } catch (err) { 
+            console.error("❌ 저장 실패:", err); 
+        }
     });
+
+    socket.on('disconnect', () => console.log('👤 접속 종료:', socket.id));
 });
 
-server.listen(3000, () => console.log("🚀 Server running on port 3000"));
+// 포트 중복 방지 로직 (EADDRINUSE 에러 방지)
+const PORT = 3000;
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`
+    🚀 서버 실행 완료!
+    🔗 접속 주소: http://15.134.86.182:${PORT}
+    📡 모든 꽃 조회: http://15.134.86.182:${PORT}/all-flowers
+    `);
+});
