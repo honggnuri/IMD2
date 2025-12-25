@@ -218,7 +218,7 @@
         // --- 3. 🌸 모델 로딩 ---
         async function getModel(prefabName) {
             if (prefabCache[prefabName]) return prefabCache[prefabName];
-            const path = `/public/assets/${prefabName}.glb`;
+            const path = `/assets/${prefabName}.glb`;
             try {
                 const gltf = await loader.loadAsync(path);
                 prefabCache[prefabName] = gltf.scene;
