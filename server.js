@@ -23,7 +23,7 @@ const io = new Server(server, {
 const dbConfig = {
     host: 'serverflowerdb.cbac0os8o7si.ap-southeast-2.rds.amazonaws.com',
     user: 'nurihong',
-    password: 'ㅇㅇ', 
+    password: '10834Ghdsnfl!', 
     database: 'serverflowerdb',
     waitForConnections: true,
     connectionLimit: 10
