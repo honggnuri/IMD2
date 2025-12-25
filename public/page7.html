@@ -48,9 +48,11 @@
     </div>
 
     <script>
-        // 1. 사용자 정보 가져오기
-        const storedName = sessionStorage.getItem('userName') || "테스트";
-        const storedDistrict = sessionStorage.getItem('userDistrict') || "dodam";
+        /* ============================================================
+           1. 사용자 정보 로드 (localStorage 전환)
+        ============================================================ */
+        const storedName = localStorage.getItem('userName') || "테스트";
+        const storedDistrict = localStorage.getItem('userDistrict') || "dodam";
 
         const districtNames = {
             'eojindong': '어진동', 'dodam': '도담동', 'areum': '아름동',
@@ -63,9 +65,8 @@
         const districtKr = districtNames[storedDistrict] || "세종시";
         document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
 
-        // 2. 데이터 정의
         const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7', '#FFD43B', '#69DB7C', '#FCC2D7'];
-        const allShapes = ['F1', 'F2', 'F3'];
+        
         const districtShapes = {
             'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
             'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
@@ -84,28 +85,23 @@
             'otherarea': ['F1', 'F2', 'F3', 'F11', 'F35', 'F47', 'F48']
         };
 
-        const myShapes = districtShapes[storedDistrict] || allShapes;
+        const myShapes = districtShapes[storedDistrict] || ['F1', 'F2', 'F3'];
         let currentSelectedColor = colorList[0];
 
-        // 3. 캔버스 초기화
-        const canvas = new fabric.Canvas('c', {
-            preserveObjectStacking: true // 이걸 true로 해도 bringToFront()로 강제 조절 가능
-        });
+        /* ============================================================
+           2. 캔버스 초기화
+        ============================================================ */
+        const canvas = new fabric.Canvas('c', { preserveObjectStacking: true });
         canvas.backgroundColor = 'transparent';
 
-        // [기능 추가 1] 선택된 객체를 맨 위로 올리기 이벤트
         function moveSelectedToFront(e) {
             if (e.selected && e.selected.length > 0) {
-                e.selected.forEach(obj => {
-                    canvas.bringToFront(obj);
-                });
+                e.selected.forEach(obj => canvas.bringToFront(obj));
                 canvas.renderAll();
             }
         }
-        // 선택이 생성되거나(클릭), 업데이트될 때 실행
         canvas.on('selection:created', moveSelectedToFront);
         canvas.on('selection:updated', moveSelectedToFront);
-
 
         window.onload = function () {
             resizeCanvas();
@@ -125,7 +121,9 @@
             }
         }
 
-        // 4. 팔레트 로직
+        /* ============================================================
+           3. 팔레트 UI 로직
+        ============================================================ */
         function initColorPalette() {
             const container = document.getElementById('color-palette');
             container.innerHTML = '';
@@ -155,25 +153,20 @@
         async function generatePalette(shapes) {
             const container = document.getElementById('flower-palette-container');
             container.innerHTML = '';
-
             for (let shape of shapes) {
                 const filePath = `assets/${shape}.svg`;
                 try {
                     const res = await fetch(filePath);
                     if (!res.ok) throw new Error('SVG Load Fail');
                     let svgText = await res.text();
-
                     const btn = document.createElement('div');
                     btn.className = 'shape-btn';
                     btn.dataset.svg = svgText;
                     btn.dataset.type = shape;
                     btn.innerHTML = svgText.replace(/fill="[^"]*"/g, `fill="${currentSelectedColor}"`);
-
                     btn.onclick = () => addShapeToCanvas(shape, currentSelectedColor);
                     container.appendChild(btn);
-                } catch (e) {
-                    console.warn(e);
-                }
+                } catch (e) { console.warn(e); }
             }
         }
 
@@ -184,12 +177,13 @@
             });
         }
 
-        // 5. 캔버스 객체 추가 (설정 적용)
+        /* ============================================================
+           4. 객체 추가 및 삭제 로직
+        ============================================================ */
         function addShapeToCanvas(type, color) {
             fabric.loadSVGFromURL(`assets/${type}.svg`, (objects, options) => {
                 const obj = fabric.util.groupSVGElements(objects, options);
                 applyColor(obj, color);
-
                 const canvasWidth = canvas.getWidth();
                 const initialScale = (canvasWidth * 0.3) / Math.max(obj.width, obj.height);
                 const center = canvas.getCenter();
@@ -197,29 +191,18 @@
                 obj.set({
                     left: center.left, top: center.top,
                     originX: 'center', originY: 'center',
-
-                    // [기능 추가 2] 비율 고정 (Uniform Scaling)
                     lockUniScaling: true,
-
-                    // [기능 추가 3] 회전 30도 스냅
                     snapAngle: 30,
-
                     cornerColor: 'rgba(0,0,0,0.5)',
                     transparentCorners: false
                 });
 
-                // 비율 고정을 시각적으로 보여주기 위해 상/하/좌/우 핸들 숨김
-                obj.setControlsVisibility({
-                    mt: false, mb: false, ml: false, mr: false
-                });
-
+                obj.setControlsVisibility({ mt: false, mb: false, ml: false, mr: false });
                 obj.userColor = color;
                 obj.type = type;
 
                 canvas.add(obj);
                 canvas.setActiveObject(obj);
-
-                // 생성되자마자 맨 위로
                 canvas.bringToFront(obj);
 
                 obj.animate('scaleX', initialScale, { duration: 400, onChange: canvas.renderAll.bind(canvas), easing: fabric.util.ease.easeOutBack });
@@ -234,9 +217,7 @@
             } else { obj.set('fill', color); }
         }
 
-        // 삭제 영역 로직
         const deleteZone = document.getElementById('delete-zone');
-
         canvas.on('object:moving', (e) => {
             deleteZone.classList.remove('hidden');
             if (e.target.top > canvas.getHeight() * 0.8) {
@@ -252,7 +233,6 @@
             const obj = canvas.getActiveObject();
             deleteZone.classList.add('hidden');
             deleteZone.classList.remove('delete-active');
-
             if (obj && obj.top > canvas.getHeight() * 0.8) {
                 canvas.remove(obj);
                 canvas.discardActiveObject();
@@ -261,43 +241,18 @@
         });
 
         /* ============================================================
-           저장 및 이동 (Bounding Box 정규화 + 좌표/순서 보정 포함)
+           5. 저장 및 정규화 (유니티 호환 버전)
         ============================================================ */
-        /* ============================================================
-           [최종 수정] 바운딩 박스 기반 + 발바닥(Bottom) 기준 좌표 계산
-        ============================================================ */
-        /* ============================================================
-           [최종 비율 고정 버전] 
-           데이터를 0.0 ~ 1.0 사이의 비율 값으로 변환해서 보냅니다.
-           이렇게 해야 유니티에서 크기를 키워도 모양이 안 망가집니다.
-        ============================================================ */
-        /* ============================================================
-                  [최종 비율 고정 버전] 
-                  데이터를 0.0 ~ 1.0 사이의 비율 값으로 변환해서 보냅니다.
-                  이렇게 해야 유니티에서 크기를 키워도 모양이 안 망가집니다.
-               ============================================================ */
-        /* ============================================================
-     [최종 정밀 보정] 중심점(Center Point) 강제 추출 방식
-     - 회전된 객체의 '모서리'가 아니라 '진짜 중심'을 잡습니다.
-     - 유니티에서 위치가 미세하게 틀어지는 현상을 잡습니다.
- ============================================================ */
         function saveAndMove() {
             canvas.discardActiveObject();
             canvas.renderAll();
 
             const objects = canvas.getObjects();
-            if (objects.length === 0) {
-                alert('꽃을 만들어주세요!');
-                return;
-            }
+            if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
 
-            /* ===============================
-               1. 전체 꽃 영역 계산 (2번의 정확한 방식 유지)
-               =============================== */
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
             objects.forEach(obj => {
-                const coords = obj.aCoords; // 회전 포함 정확한 좌표
+                const coords = obj.aCoords;
                 for (let key in coords) {
                     const p = coords[key];
                     if (p.x < minX) minX = p.x;
@@ -307,54 +262,26 @@
                 }
             });
 
-            /* ===============================
-               2. 기준점 설정 (1번 방식)
-               =============================== */
             const centerX = minX + (maxX - minX) / 2;
             const bottomY = maxY;
+            const normalizeRatio = 1.0 / canvas.getWidth();
 
-            /* ===============================
-               3. 정규화 비율 (1번 방식 유지)
-               =============================== */
-            const canvasWidth = canvas.getWidth();
-            const normalizeRatio = 1.0 / canvasWidth;
+            const unityDataList = objects.map((o, index) => ({
+                prefabName: o.type || 'petal_prefab',
+                color: o.userColor || '#FF9AA2',
+                posX: parseFloat(((o.left - centerX) * normalizeRatio).toFixed(6)),
+                posY: parseFloat(((bottomY - o.top) * normalizeRatio).toFixed(6)),
+                scaleX: parseFloat((o.scaleX * normalizeRatio).toFixed(6)),
+                scaleY: parseFloat((o.scaleY * normalizeRatio).toFixed(6)),
+                rotation: -o.angle,
+                sortOrder: index
+            }));
 
-            /* ===============================
-               4. Unity 데이터 생성
-               =============================== */
-            const unityDataList = objects.map((o, index) => {
-                return {
-                    prefabName: o.type || 'petal_prefab',
-                    color: o.userColor || '#FF9AA2',
-
-                    // 1번 방식 좌표 계산
-                    posX: parseFloat(((o.left - centerX) * normalizeRatio).toFixed(6)),
-                    posY: parseFloat(((bottomY - o.top) * normalizeRatio).toFixed(6)),
-
-                    scaleX: parseFloat((o.scaleX * normalizeRatio).toFixed(6)),
-                    scaleY: parseFloat((o.scaleY * normalizeRatio).toFixed(6)),
-
-                    rotation: -o.angle,
-                    sortOrder: index
-                };
-            });
-
-            /* ===============================
-               5. 미리보기 이미지 (2번 기능 유지)
-               =============================== */
             const flowerImageUrl = canvas.toDataURL({
-                format: 'png',
-                quality: 1.0,
-                multiplier: 2,
-                left: minX,
-                top: minY,
-                width: maxX - minX,
-                height: maxY - minY
+                format: 'png', quality: 1.0, multiplier: 2,
+                left: minX, top: minY, width: maxX - minX, height: maxY - minY
             });
 
-            /* ===============================
-               6. 데이터 저장 & 이동
-               =============================== */
             const data = {
                 userName: storedName,
                 location: storedDistrict,
@@ -362,13 +289,14 @@
                 previewImage: flowerImageUrl
             };
 
-            sessionStorage.setItem('flowerData', JSON.stringify(data));
+            // DB 전송을 위해 localStorage에 저장
+            localStorage.setItem('flowerData', JSON.stringify(data));
+            localStorage.setItem('userName', storedName);
 
-            console.log("전송 데이터:", data);
+            console.log("전송 대기 데이터:", data);
             alert("저장되었습니다!");
-            window.location.href = 'page8.html';
+            window.location.href = '/public/page8.html';
         }
-
     </script>
 </body>
 
