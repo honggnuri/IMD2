@@ -43,7 +43,7 @@
                 </div>
             </div>
 
-            <button class="finish-btn" onclick="saveAndMove()">완성하기</button>
+            <button class="finish-btn" onclick="saveAndMove()">이게 내 꽃이야!</button>
         </div>
     </div>
 
@@ -240,8 +240,8 @@
             }
         });
 
-/* ============================================================
-   5. 저장 및 정규화 (유니티 및 정원 호환 버전)
+/*/* ============================================================
+   5. 저장 및 정규화 (투명 배경 & 컬러 보존 버전)
 ============================================================ */
 async function saveAndMove() {
     canvas.discardActiveObject();
@@ -253,11 +253,8 @@ async function saveAndMove() {
         return;
     }
 
-    /* ============================================================
-       1. 꽃 영역(Bounding Box) 계산
-    ============================================================ */
+    /* 1. 꽃 영역(Bounding Box) 계산 */
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
     objects.forEach(obj => {
         const coords = obj.aCoords;
         for (let key in coords) {
@@ -272,17 +269,12 @@ async function saveAndMove() {
     const flowerWidth = maxX - minX;
     const flowerHeight = maxY - minY;
 
-    /* ============================================================
-       2. 👉 1:1 정방형 영역 만들기 (중앙 정렬)
-    ============================================================ */
+    /* 2. 1:1 정방형 영역 계산 (중앙 정렬 유지) */
     const squareSize = Math.max(flowerWidth, flowerHeight);
-
     const squareLeft = minX + flowerWidth / 2 - squareSize / 2;
     const squareTop  = minY + flowerHeight / 2 - squareSize / 2;
 
-    /* ============================================================
-       3. Unity / 정원용 정규화 데이터
-    ============================================================ */
+    /* 3. Unity / 정원용 정규화 데이터 생성 */
     const normalizeRatio = 1.0 / squareSize;
     const centerX = minX + flowerWidth / 2;
     const bottomY = maxY;
@@ -298,12 +290,8 @@ async function saveAndMove() {
         sortOrder: index
     }));
 
-    /* ============================================================
-       4. ✅ 흰 배경 깔고 → 1:1 정방형으로 캡처
-    ============================================================ */
-    const prevBg = canvas.backgroundColor;
-    canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
-
+    /* 4. ✅ 투명 배경 유지하며 1:1 정방형 캡처 */
+    // 기존에 흰 배경을 깔던 로직을 제거하여 투명도를 유지합니다.
     const flowerImageUrl = canvas.toDataURL({
         format: 'png',
         multiplier: 2,
@@ -313,16 +301,12 @@ async function saveAndMove() {
         height: squareSize
     });
 
-    canvas.setBackgroundColor(prevBg, canvas.renderAll.bind(canvas));
-
-    /* ============================================================
-       5. 서버 전송 데이터
-    ============================================================ */
+    /* 5. 서버 전송 데이터 구성 */
     const finalData = {
         userName: storedName,
         location: storedDistrict,
         unityData: unityDataList,
-        previewImage: flowerImageUrl
+        previewImage: flowerImageUrl // 투명 컬러 이미지
     };
 
     const finishBtn = document.querySelector('.finish-btn');
@@ -332,6 +316,7 @@ async function saveAndMove() {
     }
 
     try {
+        // 서버에 이미지 파일 저장 요청 (POST)
         const response = await fetch('http://15.134.86.182:3000/upload-flower', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -344,6 +329,7 @@ async function saveAndMove() {
 
         if (!response.ok) throw new Error('서버 이미지 저장 실패');
 
+        // 로컬스토리지 저장 및 다음 페이지 이동
         localStorage.setItem('flowerData', JSON.stringify(finalData));
         window.location.href = 'page9.html';
 
@@ -353,12 +339,7 @@ async function saveAndMove() {
 
         if (finishBtn) {
             finishBtn.disabled = false;
-            finishBtn.innerText = "완성하기";
+            finishBtn.innerText = "다만들었어!";
         }
     }
 }
-
-    </script>
-</body>
-
-</html>
