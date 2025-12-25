@@ -104,3 +104,34 @@ const PORT = 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다.`);
 });
+
+// ------------------------------------------------------------
+// ✅ 모든 꽃 데이터 불러오기 API (정원용)
+// ------------------------------------------------------------
+app.get('/all-flowers', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT 
+                userName,
+                location,
+                gardenX,
+                gardenZ,
+                unityData,
+                previewImage
+            FROM flowers
+            ORDER BY id DESC
+        `);
+
+        // unityData JSON 파싱
+        const parsedRows = rows.map(row => ({
+            ...row,
+            unityData: JSON.parse(row.unityData)
+        }));
+
+        res.json(parsedRows);
+        console.log(`🌸 꽃 ${parsedRows.length}개 전송 완료`);
+    } catch (err) {
+        console.error("❌ /all-flowers 에러:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
