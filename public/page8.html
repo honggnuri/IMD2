@@ -66,7 +66,7 @@
         document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
 
         const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7', '#FFD43B', '#69DB7C', '#FCC2D7'];
-        
+
         const districtShapes = {
             'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
             'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
@@ -243,13 +243,14 @@
         /* ============================================================
            5. 저장 및 정규화 (유니티 호환 버전)
         ============================================================ */
-        function saveAndMove() {
+        async function saveAndMove() {
             canvas.discardActiveObject();
             canvas.renderAll();
 
             const objects = canvas.getObjects();
             if (objects.length === 0) { alert('꽃을 만들어주세요!'); return; }
 
+            // 1. 꽃이 그려진 영역만 정밀하게 계산
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
             objects.forEach(obj => {
                 const coords = obj.aCoords;
@@ -262,40 +263,45 @@
                 }
             });
 
-            const centerX = minX + (maxX - minX) / 2;
-            const bottomY = maxY;
-            const normalizeRatio = 1.0 / canvas.getWidth();
-
-            const unityDataList = objects.map((o, index) => ({
-                prefabName: o.type || 'petal_prefab',
-                color: o.userColor || '#FF9AA2',
-                posX: parseFloat(((o.left - centerX) * normalizeRatio).toFixed(6)),
-                posY: parseFloat(((bottomY - o.top) * normalizeRatio).toFixed(6)),
-                scaleX: parseFloat((o.scaleX * normalizeRatio).toFixed(6)),
-                scaleY: parseFloat((o.scaleY * normalizeRatio).toFixed(6)),
-                rotation: -o.angle,
-                sortOrder: index
-            }));
-
+            // 2. 이미지 추출 (PNG Base64)
             const flowerImageUrl = canvas.toDataURL({
-                format: 'png', quality: 1.0, multiplier: 2,
+                format: 'png',
+                multiplier: 2, // 고해상도 출력용
                 left: minX, top: minY, width: maxX - minX, height: maxY - minY
             });
 
-            const data = {
-                userName: storedName,
-                location: storedDistrict,
-                unityData: unityDataList,
-                previewImage: flowerImageUrl
-            };
+            // 3. 서버에 이미지 전송 (파일로 저장 요청)
+            const finishBtn = document.querySelector('.finish-btn');
+            if (finishBtn) { finishBtn.disabled = true; finishBtn.innerText = "저장 중..."; }
 
-            // DB 전송을 위해 localStorage에 저장
-            localStorage.setItem('flowerData', JSON.stringify(data));
-            localStorage.setItem('userName', storedName);
+            try {
+                const response = await fetch('http://15.134.86.182:3000/upload-flower', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        location: storedDistrict, // 예: 'dodam'
+                        image: flowerImageUrl,
+                        userName: storedName
+                    })
+                });
 
-            console.log("전송 대기 데이터:", data);
-            alert("저장되었습니다!");
-            window.location.href = 'page9.html';
+                if (!response.ok) throw new Error('서버 저장 실패');
+
+                // 4. 로컬스토리지에 데이터 백업 후 다음 페이지로
+                const finalData = {
+                    userName: storedName,
+                    location: storedDistrict,
+                    previewImage: flowerImageUrl
+                };
+                localStorage.setItem('flowerData', JSON.stringify(finalData));
+
+                window.location.href = 'page9.html';
+
+            } catch (error) {
+                console.error("에러:", error);
+                alert("서버 저장에 실패했습니다.");
+                if (finishBtn) { finishBtn.disabled = false; finishBtn.innerText = "완성하기"; }
+            }
         }
     </script>
 </body>
