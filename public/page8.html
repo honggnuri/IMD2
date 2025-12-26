@@ -49,300 +49,302 @@
 
     <body>
         <script>
-        /* ============================================================
-        1. 사용자 정보 로드 (localStorage 전환)
-        ============================================================ */
-        const storedName = localStorage.getItem('userName') || "테스트";
-        const storedDistrict = localStorage.getItem('userDistrict') || "dodam";
+            /* ============================================================
+            1. 사용자 정보 로드 (localStorage 전환)
+            ============================================================ */
+            const storedName = localStorage.getItem('userName') || "테스트";
+            const storedDistrict = localStorage.getItem('userDistrict') || "dodam";
 
-        const districtNames = {
-        'eojindong': '어진동', 'dodam': '도담동', 'areum': '아름동',
-        'hamildong': '한솔동', 'naseongdong': '나성동', 'bangok_jiphyeon': '반곡·집현동',
-        'jochiwon': '조치원읍', 'jeonui_myeon': '전의면', 'yeonseomyeon': '연서면',
-        'bugangmyeon': '부강면', 'geumnammyeon': '금남면', 'yeongimyeon': '연기면',
-        'janggunmyeon': '장군면', 'yeondongmyeon': '연동면', 'otherarea': '기타 지역'
-        };
-
-        const districtKr = districtNames[storedDistrict] || "세종시";
-        document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
-
-        const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7',
-        '#FFD43B', '#69DB7C', '#FCC2D7'];
-
-        const districtShapes = {
-        'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
-        'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
-        'areum': ['F1', 'F2', 'F3', 'F12', 'F13', 'F14', 'F15'],
-        'hamildong': ['F1', 'F2', 'F3', 'F16', 'F17', 'F18', 'F19'],
-        'naseongdong': ['F1', 'F2', 'F3', 'F20', 'F21', 'F22', 'F23'],
-        'bangok_jiphyeon': ['F1', 'F2', 'F3', 'F24', 'F25', 'F26', 'F27'],
-        'jochiwon': ['F1', 'F2', 'F3', 'F28', 'F29', 'F30', 'F31'],
-        'jeonui_myeon': ['F1', 'F2', 'F3', 'F15', 'F30', 'F32', 'F33'],
-        'yeonseomyeon': ['F1', 'F2', 'F3', 'F6', 'F8', 'F13', 'F34'],
-        'bugangmyeon': ['F1', 'F2', 'F3', 'F35', 'F36', 'F37', 'F38'],
-        'geumnammyeon': ['F1', 'F2', 'F3', 'F14', 'F26', 'F36', 'F39'],
-        'yeongimyeon': ['F1', 'F2', 'F3', 'F32', 'F40', 'F41', 'F42'],
-        'janggunmyeon': ['F1', 'F2', 'F3', 'F13', 'F43', 'F44', 'F45'],
-        'yeondongmyeon': ['F1', 'F2', 'F3', 'F22', 'F36', 'F44', 'F46'],
-        'otherarea': ['F1', 'F2', 'F3', 'F11', 'F35', 'F47', 'F48']
-        };
-
-        const myShapes = districtShapes[storedDistrict] || ['F1', 'F2', 'F3'];
-        let currentSelectedColor = colorList[0];
-
-        /* ============================================================
-        2. 캔버스 초기화
-        ============================================================ */
-        const canvas = new fabric.Canvas('c', { preserveObjectStacking: true });
-        canvas.backgroundColor = 'transparent';
-
-        function moveSelectedToFront(e) {
-        if (e.selected && e.selected.length > 0) {
-        e.selected.forEach(obj => canvas.bringToFront(obj));
-        canvas.renderAll();
-        }
-        }
-        canvas.on('selection:created', moveSelectedToFront);
-        canvas.on('selection:updated', moveSelectedToFront);
-
-        window.onload = function () {
-        resizeCanvas();
-        initColorPalette();
-        generatePalette(myShapes);
-        };
-
-        window.addEventListener('resize', resizeCanvas);
-
-        function resizeCanvas() {
-        const wrapper = document.querySelector('.canvas-wrapper');
-        if (wrapper) {
-        const size = wrapper.clientWidth;
-        canvas.setWidth(size);
-        canvas.setHeight(size);
-        canvas.renderAll();
-        }
-        }
-
-        /* ============================================================
-        3. 팔레트 UI 로직
-        ============================================================ */
-        function initColorPalette() {
-        const container = document.getElementById('color-palette');
-        container.innerHTML = '';
-        colorList.forEach((color, idx) => {
-        const btn = document.createElement('div');
-        btn.className = 'color-btn';
-        if (idx === 0) btn.classList.add('active');
-        btn.style.backgroundColor = color;
-        btn.onclick = () => selectColor(btn, color);
-        container.appendChild(btn);
-        });
-        }
-
-        function selectColor(btn, color) {
-        currentSelectedColor = color;
-        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
-        const activeObj = canvas.getActiveObject();
-        if (activeObj) {
-        applyColor(activeObj, color);
-        canvas.renderAll();
-        }
-        updateShapeButtons(color);
-        }
-
-        async function generatePalette(shapes) {
-        const container = document.getElementById('flower-palette-container');
-        container.innerHTML = '';
-        for (let shape of shapes) {
-        const filePath = `assets/${shape}.svg`;
-        try {
-        const res = await fetch(filePath);
-        if (!res.ok) throw new Error('SVG Load Fail');
-        let svgText = await res.text();
-        const btn = document.createElement('div');
-        btn.className = 'shape-btn';
-        btn.dataset.svg = svgText;
-        btn.dataset.type = shape;
-        btn.innerHTML = svgText.replace(/fill="[^"]*"/g, `fill="${currentSelectedColor}"`);
-        btn.onclick = () => addShapeToCanvas(shape, currentSelectedColor);
-        container.appendChild(btn);
-        } catch (e) { console.warn(e); }
-        }
-        }
-
-        function updateShapeButtons(color) {
-        document.querySelectorAll('.shape-btn').forEach(btn => {
-        const svg = btn.dataset.svg;
-        if (svg) btn.innerHTML = svg.replace(/fill="[^"]*"/g, `fill="${color}"`);
-        });
-        }
-
-        /* ============================================================
-        4. 객체 추가 및 삭제 로직
-        ============================================================ */
-        function addShapeToCanvas(type, color) {
-        fabric.loadSVGFromURL(`assets/${type}.svg`, (objects, options) => {
-        const obj = fabric.util.groupSVGElements(objects, options);
-        applyColor(obj, color);
-        const canvasWidth = canvas.getWidth();
-        const initialScale = (canvasWidth * 0.3) / Math.max(obj.width, obj.height);
-        const center = canvas.getCenter();
-
-        obj.set({
-        left: center.left, top: center.top,
-        originX: 'center', originY: 'center',
-        lockUniScaling: true,
-        snapAngle: 30,
-        cornerColor: 'rgba(0,0,0,0.5)',
-        transparentCorners: false
-        });
-
-        obj.setControlsVisibility({ mt: false, mb: false, ml: false, mr: false });
-        obj.userColor = color;
-        obj.type = type;
-
-        canvas.add(obj);
-        canvas.setActiveObject(obj);
-        canvas.bringToFront(obj);
-
-        obj.animate('scaleX', initialScale, { duration: 400, onChange: canvas.renderAll.bind(canvas), easing:
-        fabric.util.ease.easeOutBack });
-        obj.animate('scaleY', initialScale, { duration: 400, easing: fabric.util.ease.easeOutBack });
-        });
-        }
-
-        function applyColor(obj, color) {
-        obj.userColor = color;
-        if (obj.isType('group')) {
-        obj.getObjects().forEach(o => { if (o.fill !== 'none') o.set('fill', color); });
-        } else { obj.set('fill', color); }
-        }
-
-        const deleteZone = document.getElementById('delete-zone');
-        canvas.on('object:moving', (e) => {
-        deleteZone.classList.remove('hidden');
-        if (e.target.top > canvas.getHeight() * 0.8) {
-        deleteZone.classList.add('delete-active');
-        e.target.opacity = 0.5;
-        } else {
-        deleteZone.classList.remove('delete-active');
-        e.target.opacity = 1;
-        }
-        });
-
-        canvas.on('mouse:up', () => {
-        const obj = canvas.getActiveObject();
-        deleteZone.classList.add('hidden');
-        deleteZone.classList.remove('delete-active');
-        if (obj && obj.top > canvas.getHeight() * 0.8) {
-        canvas.remove(obj);
-        canvas.discardActiveObject();
-        canvas.renderAll();
-        }
-        });
-
-        /* ============================================================
-        5. 저장 및 정규화 (투명 배경 & 컬러 보존 버전)
-        ============================================================ */
-        async function saveAndMove() {
-        canvas.discardActiveObject();
-        canvas.renderAll();
-
-        const objects = canvas.getObjects();
-        if (objects.length === 0) {
-        alert('꽃을 만들어주세요!');
-        return;
-        }
-
-        /* 1. 꽃 영역(Bounding Box) 계산 */
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        objects.forEach(obj => {
-        const coords = obj.aCoords;
-        for (let key in coords) {
-        const p = coords[key];
-        if (p.x < minX) minX=p.x; if (p.y < minY) minY=p.y; if (p.x> maxX) maxX = p.x;
-            if (p.y > maxY) maxY = p.y;
-            }
-            });
-
-            const flowerWidth = maxX - minX;
-            const flowerHeight = maxY - minY;
-
-            /* 2. 1:1 정방형 영역 계산 (중앙 정렬 유지) */
-            const squareSize = Math.max(flowerWidth, flowerHeight);
-            const squareLeft = minX + flowerWidth / 2 - squareSize / 2;
-            const squareTop = minY + flowerHeight / 2 - squareSize / 2;
-
-            /* 3. Unity / 정원용 정규화 데이터 생성 */
-            const normalizeRatio = 1.0 / squareSize;
-            const centerX = minX + flowerWidth / 2;
-            const bottomY = maxY;
-
-            const unityDataList = objects.map((o, index) => ({
-            prefabName: o.type || 'petal_prefab',
-            color: o.userColor || '#FF9AA2',
-            posX: parseFloat(((o.left - centerX) * normalizeRatio).toFixed(6)),
-            posY: parseFloat(((bottomY - o.top) * normalizeRatio).toFixed(6)),
-            scaleX: parseFloat((o.scaleX * normalizeRatio).toFixed(6)),
-            scaleY: parseFloat((o.scaleY * normalizeRatio).toFixed(6)),
-            rotation: -o.angle,
-            sortOrder: index
-            }));
-
-            /* 4. ✅ 투명 배경 유지하며 1:1 정방형 캡처 */
-            // 기존에 흰 배경을 깔던 로직을 제거하여 투명도를 유지합니다.
-            const flowerImageUrl = canvas.toDataURL({
-            format: 'png',
-            multiplier: 2,
-            left: squareLeft,
-            top: squareTop,
-            width: squareSize,
-            height: squareSize
-            });
-
-            /* 5. 서버 전송 데이터 구성 */
-            const finalData = {
-            userName: storedName,
-            location: storedDistrict,
-            unityData: unityDataList,
-            previewImage: flowerImageUrl // 투명 컬러 이미지
+            const districtNames = {
+                'eojindong': '어진동', 'dodam': '도담동', 'areum': '아름동',
+                'hamildong': '한솔동', 'naseongdong': '나성동', 'bangok_jiphyeon': '반곡·집현동',
+                'jochiwon': '조치원읍', 'jeonui_myeon': '전의면', 'yeonseomyeon': '연서면',
+                'bugangmyeon': '부강면', 'geumnammyeon': '금남면', 'yeongimyeon': '연기면',
+                'janggunmyeon': '장군면', 'yeondongmyeon': '연동면', 'otherarea': '기타 지역'
             };
 
-            const finishBtn = document.querySelector('.finish-btn');
-            if (finishBtn) {
-            finishBtn.disabled = true;
-            finishBtn.innerText = "저장 중...";
+            const districtKr = districtNames[storedDistrict] || "세종시";
+            document.getElementById('step2-sub-msg').innerText = `${districtKr}에서 온 ${storedName}(이)의`;
+
+            const colorList = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#FF6B6B', '#4DABF7',
+                '#FFD43B', '#69DB7C', '#FCC2D7'];
+
+            const districtShapes = {
+                'eojindong': ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'],
+                'dodam': ['F1', 'F2', 'F3', 'F8', 'F9', 'F10', 'F11'],
+                'areum': ['F1', 'F2', 'F3', 'F12', 'F13', 'F14', 'F15'],
+                'hamildong': ['F1', 'F2', 'F3', 'F16', 'F17', 'F18', 'F19'],
+                'naseongdong': ['F1', 'F2', 'F3', 'F20', 'F21', 'F22', 'F23'],
+                'bangok_jiphyeon': ['F1', 'F2', 'F3', 'F24', 'F25', 'F26', 'F27'],
+                'jochiwon': ['F1', 'F2', 'F3', 'F28', 'F29', 'F30', 'F31'],
+                'jeonui_myeon': ['F1', 'F2', 'F3', 'F15', 'F30', 'F32', 'F33'],
+                'yeonseomyeon': ['F1', 'F2', 'F3', 'F6', 'F8', 'F13', 'F34'],
+                'bugangmyeon': ['F1', 'F2', 'F3', 'F35', 'F36', 'F37', 'F38'],
+                'geumnammyeon': ['F1', 'F2', 'F3', 'F14', 'F26', 'F36', 'F39'],
+                'yeongimyeon': ['F1', 'F2', 'F3', 'F32', 'F40', 'F41', 'F42'],
+                'janggunmyeon': ['F1', 'F2', 'F3', 'F13', 'F43', 'F44', 'F45'],
+                'yeondongmyeon': ['F1', 'F2', 'F3', 'F22', 'F36', 'F44', 'F46'],
+                'otherarea': ['F1', 'F2', 'F3', 'F11', 'F35', 'F47', 'F48']
+            };
+
+            const myShapes = districtShapes[storedDistrict] || ['F1', 'F2', 'F3'];
+            let currentSelectedColor = colorList[0];
+
+            /* ============================================================
+            2. 캔버스 초기화
+            ============================================================ */
+            const canvas = new fabric.Canvas('c', { preserveObjectStacking: true });
+            canvas.backgroundColor = 'transparent';
+
+            function moveSelectedToFront(e) {
+                if (e.selected && e.selected.length > 0) {
+                    e.selected.forEach(obj => canvas.bringToFront(obj));
+                    canvas.renderAll();
+                }
+            }
+            canvas.on('selection:created', moveSelectedToFront);
+            canvas.on('selection:updated', moveSelectedToFront);
+
+            window.onload = function () {
+                resizeCanvas();
+                initColorPalette();
+                generatePalette(myShapes);
+            };
+
+            window.addEventListener('resize', resizeCanvas);
+
+            function resizeCanvas() {
+                const wrapper = document.querySelector('.canvas-wrapper');
+                if (wrapper) {
+                    const size = wrapper.clientWidth;
+                    canvas.setWidth(size);
+                    canvas.setHeight(size);
+                    canvas.renderAll();
+                }
             }
 
-            try {
-            // 서버에 이미지 파일 저장 요청 (POST)
-            const response = await fetch('http://15.134.86.182:3000/upload-flower', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-            location: storedDistrict,
-            image: flowerImageUrl,
-            userName: storedName
-            })
+            /* ============================================================
+            3. 팔레트 UI 로직
+            ============================================================ */
+            function initColorPalette() {
+                const container = document.getElementById('color-palette');
+                container.innerHTML = '';
+                colorList.forEach((color, idx) => {
+                    const btn = document.createElement('div');
+                    btn.className = 'color-btn';
+                    if (idx === 0) btn.classList.add('active');
+                    btn.style.backgroundColor = color;
+                    btn.onclick = () => selectColor(btn, color);
+                    container.appendChild(btn);
+                });
+            }
+
+            function selectColor(btn, color) {
+                currentSelectedColor = color;
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const activeObj = canvas.getActiveObject();
+                if (activeObj) {
+                    applyColor(activeObj, color);
+                    canvas.renderAll();
+                }
+                updateShapeButtons(color);
+            }
+
+            async function generatePalette(shapes) {
+                const container = document.getElementById('flower-palette-container');
+                container.innerHTML = '';
+                for (let shape of shapes) {
+                    const filePath = `assets/${shape}.svg`;
+                    try {
+                        const res = await fetch(filePath);
+                        if (!res.ok) throw new Error('SVG Load Fail');
+                        let svgText = await res.text();
+                        const btn = document.createElement('div');
+                        btn.className = 'shape-btn';
+                        btn.dataset.svg = svgText;
+                        btn.dataset.type = shape;
+                        btn.innerHTML = svgText.replace(/fill="[^"]*"/g, `fill="${currentSelectedColor}"`);
+                        btn.onclick = () => addShapeToCanvas(shape, currentSelectedColor);
+                        container.appendChild(btn);
+                    } catch (e) { console.warn(e); }
+                }
+            }
+
+            function updateShapeButtons(color) {
+                document.querySelectorAll('.shape-btn').forEach(btn => {
+                    const svg = btn.dataset.svg;
+                    if (svg) btn.innerHTML = svg.replace(/fill="[^"]*"/g, `fill="${color}"`);
+                });
+            }
+
+            /* ============================================================
+            4. 객체 추가 및 삭제 로직
+            ============================================================ */
+            function addShapeToCanvas(type, color) {
+                fabric.loadSVGFromURL(`assets/${type}.svg`, (objects, options) => {
+                    const obj = fabric.util.groupSVGElements(objects, options);
+                    applyColor(obj, color);
+                    const canvasWidth = canvas.getWidth();
+                    const initialScale = (canvasWidth * 0.3) / Math.max(obj.width, obj.height);
+                    const center = canvas.getCenter();
+
+                    obj.set({
+                        left: center.left, top: center.top,
+                        originX: 'center', originY: 'center',
+                        lockUniScaling: true,
+                        snapAngle: 30,
+                        cornerColor: 'rgba(0,0,0,0.5)',
+                        transparentCorners: false
+                    });
+
+                    obj.setControlsVisibility({ mt: false, mb: false, ml: false, mr: false });
+                    obj.userColor = color;
+                    obj.type = type;
+
+                    canvas.add(obj);
+                    canvas.setActiveObject(obj);
+                    canvas.bringToFront(obj);
+
+                    obj.animate('scaleX', initialScale, {
+                        duration: 400, onChange: canvas.renderAll.bind(canvas), easing:
+                            fabric.util.ease.easeOutBack
+                    });
+                    obj.animate('scaleY', initialScale, { duration: 400, easing: fabric.util.ease.easeOutBack });
+                });
+            }
+
+            function applyColor(obj, color) {
+                obj.userColor = color;
+                if (obj.isType('group')) {
+                    obj.getObjects().forEach(o => { if (o.fill !== 'none') o.set('fill', color); });
+                } else { obj.set('fill', color); }
+            }
+
+            const deleteZone = document.getElementById('delete-zone');
+            canvas.on('object:moving', (e) => {
+                deleteZone.classList.remove('hidden');
+                if (e.target.top > canvas.getHeight() * 0.8) {
+                    deleteZone.classList.add('delete-active');
+                    e.target.opacity = 0.5;
+                } else {
+                    deleteZone.classList.remove('delete-active');
+                    e.target.opacity = 1;
+                }
             });
 
-            if (!response.ok) throw new Error('서버 이미지 저장 실패');
+            canvas.on('mouse:up', () => {
+                const obj = canvas.getActiveObject();
+                deleteZone.classList.add('hidden');
+                deleteZone.classList.remove('delete-active');
+                if (obj && obj.top > canvas.getHeight() * 0.8) {
+                    canvas.remove(obj);
+                    canvas.discardActiveObject();
+                    canvas.renderAll();
+                }
+            });
 
-            // 로컬스토리지 저장 및 다음 페이지 이동
-            localStorage.setItem('flowerData', JSON.stringify(finalData));
-            window.location.href = 'page9.html';
+            /* ============================================================
+            5. 저장 및 정규화 (투명 배경 & 컬러 보존 버전)
+            ============================================================ */
+            async function saveAndMove() {
+                canvas.discardActiveObject();
+                canvas.renderAll();
 
-            } catch (error) {
-            console.error("❌ 저장 실패:", error);
-            alert("서버 저장에 실패했습니다.");
+                const objects = canvas.getObjects();
+                if (objects.length === 0) {
+                    alert('꽃을 만들어주세요!');
+                    return;
+                }
 
-            if (finishBtn) {
-            finishBtn.disabled = false;
-            finishBtn.innerText = "다만들었어!";
-            }
-            }
+                /* 1. 꽃 영역(Bounding Box) 계산 */
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                objects.forEach(obj => {
+                    const coords = obj.aCoords;
+                    for (let key in coords) {
+                        const p = coords[key];
+                        if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y; if (p.x > maxX) maxX = p.x;
+                        if (p.y > maxY) maxY = p.y;
+                    }
+                });
+
+                const flowerWidth = maxX - minX;
+                const flowerHeight = maxY - minY;
+
+                /* 2. 1:1 정방형 영역 계산 (중앙 정렬 유지) */
+                const squareSize = Math.max(flowerWidth, flowerHeight);
+                const squareLeft = minX + flowerWidth / 2 - squareSize / 2;
+                const squareTop = minY + flowerHeight / 2 - squareSize / 2;
+
+                /* 3. Unity / 정원용 정규화 데이터 생성 */
+                const normalizeRatio = 1.0 / squareSize;
+                const centerX = minX + flowerWidth / 2;
+                const bottomY = maxY;
+
+                const unityDataList = objects.map((o, index) => ({
+                    prefabName: o.type || 'petal_prefab',
+                    color: o.userColor || '#FF9AA2',
+                    posX: parseFloat(((o.left - centerX) * normalizeRatio).toFixed(6)),
+                    posY: parseFloat(((bottomY - o.top) * normalizeRatio).toFixed(6)),
+                    scaleX: parseFloat((o.scaleX * normalizeRatio).toFixed(6)),
+                    scaleY: parseFloat((o.scaleY * normalizeRatio).toFixed(6)),
+                    rotation: -o.angle,
+                    sortOrder: index
+                }));
+
+                /* 4. ✅ 투명 배경 유지하며 1:1 정방형 캡처 */
+                // 기존에 흰 배경을 깔던 로직을 제거하여 투명도를 유지합니다.
+                const flowerImageUrl = canvas.toDataURL({
+                    format: 'png',
+                    multiplier: 2,
+                    left: squareLeft,
+                    top: squareTop,
+                    width: squareSize,
+                    height: squareSize
+                });
+
+                /* 5. 서버 전송 데이터 구성 */
+                const finalData = {
+                    userName: storedName,
+                    location: storedDistrict,
+                    unityData: unityDataList,
+                    previewImage: flowerImageUrl // 투명 컬러 이미지
+                };
+
+                const finishBtn = document.querySelector('.finish-btn');
+                if (finishBtn) {
+                    finishBtn.disabled = true;
+                    finishBtn.innerText = "저장 중...";
+                }
+
+                try {
+                    // 서버에 이미지 파일 저장 요청 (POST)
+                    const response = await fetch('http://15.134.86.182:3000/upload-flower', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            location: storedDistrict,
+                            image: flowerImageUrl,
+                            userName: storedName
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('서버 이미지 저장 실패');
+
+                    // 로컬스토리지 저장 및 다음 페이지 이동
+                    localStorage.setItem('flowerData', JSON.stringify(finalData));
+                    window.location.href = 'page9.html';
+
+                } catch (error) {
+                    console.error("❌ 저장 실패:", error);
+                    alert("서버 저장에 실패했습니다.");
+
+                    if (finishBtn) {
+                        finishBtn.disabled = false;
+                        finishBtn.innerText = "다만들었어!";
+                    }
+                }
             }
         </script>
     </body>

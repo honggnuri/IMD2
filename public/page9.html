@@ -36,43 +36,34 @@
             }
 
             const storedData = localStorage.getItem('flowerData');
-            if (!storedData) {
-                alert("저장된 꽃 데이터가 없습니다.");
-                window.location.href = 'index.html';
-                return;
-            }
+            if (!storedData) return;
+            const data = JSON.parse(storedData);
 
             try {
-                const data = JSON.parse(storedData);
-
-                /* ============================================================
-                   👉 [추가] 이미지를 검정 실루엣 + 흰 배경으로 변환
-                ============================================================ */
                 const transformToBlackAndWhite = async (base64Str) => {
                     return new Promise((resolve) => {
                         const img = new Image();
+                        img.crossOrigin = "Anonymous"; // CORS 이슈 방지
                         img.onload = () => {
                             const canvas = document.createElement('canvas');
                             const ctx = canvas.getContext('2d');
                             canvas.width = img.width;
                             canvas.height = img.height;
 
-                            // 1. 흰색 배경 채우기
-                            ctx.fillStyle = '#ffffff';
-                            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                            // 2. 꽃 실루엣 그리기 (검정색 강제 변환)
-                            // source-in 모드를 사용하여 이미지의 불투명한 영역만 검게 칠합니다.
+                            // 1. 먼저 꽃의 실루엣을 검정색으로 만듭니다.
+                            // (원본 이미지를 그리고, 그 위에 검정색을 입힘)
                             ctx.drawImage(img, 0, 0);
                             ctx.globalCompositeOperation = 'source-in';
-                            ctx.fillStyle = '#000000';
+                            ctx.fillStyle = '#000000'; // 꽃 영역을 검정으로
                             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                            // 3. 다시 기본 모드로 복구하여 마무리
+                            // 2. 중요: 'destination-over'를 사용하여 꽃(검정) "뒤에" 흰색 배경을 깝니다.
                             ctx.globalCompositeOperation = 'destination-over';
-                            ctx.fillStyle = '#ffffff';
+                            ctx.fillStyle = '#ffffff'; // 배경을 흰색으로
                             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                            // 3. 설정을 초기화하고 결과 반환
+                            ctx.globalCompositeOperation = 'source-over';
                             resolve(canvas.toDataURL('image/png'));
                         };
                         img.src = base64Str;
@@ -82,7 +73,7 @@
                 // 흑백 이미지 생성
                 const blackWhiteImage = await transformToBlackAndWhite(data.previewImage);
 
-                // 1. 서버에 흑백 이미지로 덮어쓰기 요청
+                // 서버에 덮어쓰기 요청
                 await fetch('http://15.134.86.182:3000/upload-flower', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -93,25 +84,22 @@
                     })
                 });
 
-                // 2. 소켓을 통해 유니티로 신호 전송
+                // 소켓 신호 전송
                 const socket = io("http://15.134.86.182:3000", {
                     transports: ['websocket'],
-                    reconnectionAttempts: 1,
-                    timeout: 2000
+                    reconnectionAttempts: 1
                 });
 
                 socket.on('connect', () => {
                     socket.emit("submit_flower", data);
                     setTimeout(() => {
-                        alert("세종시 정원에 꽃을 심고 영수증을 발행합니다!");
+                        alert("정원에 꽃을 심었습니다! 영수증을 확인하세요.");
                         window.location.href = 'page10.html';
                     }, 500);
                 });
 
-                socket.on('connect_error', () => { window.location.href = 'page10.html'; });
-
             } catch (e) {
-                console.error("전송 중 에러 발생:", e);
+                console.error("최종 처리 중 에러:", e);
                 window.location.href = 'page10.html';
             }
         };
