@@ -14,7 +14,13 @@
 
     <div class="container">
         <div class="bg_container">
-            <img src="/assets/phone11.jpg" alt="background">
+            <picture>
+                <!-- 아이패드 세로 -->
+                <source srcset="/public/assets/IPAD10.jpg" media="(min-width: 768px) and (orientation: portrait)"
+                    class="bg-image">
+                <!-- 기본 (모바일 + 아이패드 가로 + 데스크탑) -->
+                <img src="/public/assets/phone11.jpg" alt="Sejong Bloom" class="main-img bg-image">
+            </picture>
         </div>
 
         <div id="watering-canvas-container"></div>
@@ -164,7 +170,7 @@
         let canGroup = new THREE.Group();
         scene.add(canGroup);
         const spoutHelper = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ visible: false }));
-        spoutHelper.position.set(1.8, 0.5, 0);
+        spoutHelper.position.set(1.8, 0.2, 0);
         canGroup.add(spoutHelper);
 
         const loader = new GLTFLoader();

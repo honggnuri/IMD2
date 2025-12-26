@@ -13,9 +13,14 @@
 </head>
 
 <body>
-    <div class="step2box">
-        <div class="img_container">
-            <img src="/assets/phone10.jpg" alt="background">
+    <div class="step2box container">
+        <div class="img_container bg-image">
+            <picture>
+                <!-- 아이패드 세로 -->
+                <source srcset="/public/assets/IPAD09.jpg" media="(min-width: 768px) and (orientation: portrait)" class="bg-image">
+                <!-- 기본 (모바일 + 아이패드 가로 + 데스크탑) -->
+                <img src="/assets/phone10.jpg" alt="Sejong Bloom" class="main-img bg-image">
+            </picture>
         </div>
         <div class="step2-container">
             <div class="step2-header">

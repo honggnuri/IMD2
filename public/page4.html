@@ -15,7 +15,13 @@
 <body>
     <div class="container">
         <div id="step-1" class="img_container">
-        <img src="/assets/phone05.jpg"> </div>
+            <picture>
+                <!-- 아이패드 세로 -->
+                <source srcset="/assets/IPAD05.jpg" media="(min-width: 768px) and (orientation: portrait)">
+                <!-- 기본 (모바일 + 아이패드 가로 + 데스크탑) -->
+                <img src="/assets/phone05.jpg" alt="Sejong Bloom" class="main-img">
+            </picture>
+        </div>
         <button class="next-btn" onclick="location.href='/page5.html'">오와!</button>
     </div>
 </body>

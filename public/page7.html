@@ -1,16 +1,23 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sejong Bloom</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
     <div class="container">
         <div id="step-1" class="img_container">
-            <img id="main-image" src="/assets/onbording.jpg" alt="Step Image">
+            <picture>
+                <source id="ipad-source" srcset="" media="(min-width: 768px) and (orientation: portrait)">
+                <img id="main-image" src="" alt="Sejong Bloom" class="main-img">
+            </picture>
         </div>
+
         <button id="next-btn" class="next-btn" onclick="handleButtonClick()">응!</button>
     </div>
 
@@ -20,54 +27,118 @@
         // 1. 이전 페이지에서 선택한 동네 정보 가져오기
         const storedDistrict = localStorage.getItem('userDistrict') || 'dodam';
 
-        // 2. [매칭 테이블] 동네별 이미지 설정
-        // first: 접속하자마자 보일 이미지 / second: 버튼 1번 누른 후 보일 이미지
+        // 2. [매칭 테이블] 동네별 이미지 설정 (모바일 & 아이패드 경로 분리)
+        // first: 첫 화면 / second: 첫 클릭 후 화면
+        // mobile: 기본 경로 / ipad: 아이패드용 경로
         const districtContent = {
-            'eojindong': { first: '/assets/eojin_01.jpg', second: '/assets/eojin_02.jpg' },
-            'dodam': { first: '/assets/dodam_01.jpg', second: '/assets/dodam_02.jpg' },
-            'areum': { first: '/assets/areum_01.jpg', second: '/assets/areum_02.jpg' },
-            'hamildong': { first: '/assets/hamil_01.jpg', second: '/assets/hamil_02.jpg' },
-            'naseongdong': { first: '/assets/naseong_01.jpg', second: '/assets/naseong_02.jpg' },
-            'bangok_jiphyeon': { first: '/assets/bangok_01.jpg', second: '/assets/bangok_02.jpg' },
-            'jochiwon': { first: '/assets/jochiwon_01.jpg', second: '/assets/jochiwon_02.jpg' },
-            'jeonui_myeon': { first: '/assets/jeonui_01.jpg', second: '/assets/jeonui_02.jpg' },
-            'yeonseomyeon': { first: '/assets/yeonseo_01.jpg', second: '/assets/yeonseo_02.jpg' },
-            'bugangmyeon': { first: '/assets/bugang_01.jpg', second: '/assets/bugang_02.jpg' },
-            'geumnammyeon': { first: '/assets/geumnam_01.jpg', second: '/assets/geumnam_02.jpg' },
-            'yeongimyeon': { first: '/assets/yeongi_01.jpg', second: '/assets/yeongi_02.jpg' },
-            'janggunmyeon': { first: '/assets/janggun_01.jpg', second: '/assets/janggun_02.jpg' },
-            'yeondongmyeon': { first: '/assets/yeondong_01.jpg', second: '/assets/yeondong_02.jpg' },
-            'otherarea': { first: '/assets/other_01.jpg', second: '/assets/other_02.jpg' }
-        };
-
-        const imgElement = document.getElementById('main-image');
-        const btnElement = document.getElementById('next-btn');
-
-        // 3. [초기 실행] 페이지 접속하자마자 첫 번째 이미지 세팅
-        window.onload = function() {
-            if (districtContent[storedDistrict]) {
-                imgElement.src = districtContent[storedDistrict].first;
+            'eojindong': {
+                first: { mobile: '/assets/eojin_01.jpg', ipad: '/assets/eojin_01_ipad.jpg' },
+                second: { mobile: '/assets/eojin_02.jpg', ipad: '/assets/eojin_02_ipad.jpg' }
+            },
+            'dodam': {
+                first: { mobile: '/assets/dodam_01.jpg', ipad: '/assets/dodam_01_ipad.jpg' },
+                second: { mobile: '/assets/dodam_02.jpg', ipad: '/assets/dodam_02_ipad.jpg' }
+            },
+            'areum': {
+                first: { mobile: '/assets/areum_01.jpg', ipad: '/assets/areum_01_ipad.jpg' },
+                second: { mobile: '/assets/areum_02.jpg', ipad: '/assets/areum_02_ipad.jpg' }
+            },
+            'hamildong': {
+                first: { mobile: '/assets/hamil_01.jpg', ipad: '/assets/hamil_01_ipad.jpg' },
+                second: { mobile: '/assets/hamil_02.jpg', ipad: '/assets/hamil_02_ipad.jpg' }
+            },
+            'naseongdong': {
+                first: { mobile: '/assets/naseong_01.jpg', ipad: '/assets/naseong_01_ipad.jpg' },
+                second: { mobile: '/assets/naseong_02.jpg', ipad: '/assets/naseong_02_ipad.jpg' }
+            },
+            'bangok_jiphyeon': {
+                first: { mobile: '/assets/bangok_01.jpg', ipad: '/assets/bangok_01_ipad.jpg' },
+                second: { mobile: '/assets/bangok_02.jpg', ipad: '/assets/bangok_02_ipad.jpg' }
+            },
+            'jochiwon': {
+                first: { mobile: '/assets/jochiwon_01.jpg', ipad: '/assets/jochiwon_01_ipad.jpg' },
+                second: { mobile: '/assets/jochiwon_02.jpg', ipad: '/assets/jochiwon_02_ipad.jpg' }
+            },
+            'jeonui_myeon': {
+                first: { mobile: '/assets/jeonui_01.jpg', ipad: '/assets/jeonui_01_ipad.jpg' },
+                second: { mobile: '/assets/jeonui_02.jpg', ipad: '/assets/jeonui_02_ipad.jpg' }
+            },
+            'yeonseomyeon': {
+                first: { mobile: '/assets/yeonseo_01.jpg', ipad: '/assets/yeonseo_01_ipad.jpg' },
+                second: { mobile: '/assets/yeonseo_02.jpg', ipad: '/assets/yeonseo_02_ipad.jpg' }
+            },
+            'bugangmyeon': {
+                first: { mobile: '/assets/bugang_01.jpg', ipad: '/assets/bugang_01_ipad.jpg' },
+                second: { mobile: '/assets/bugang_02.jpg', ipad: '/assets/bugang_02_ipad.jpg' }
+            },
+            'geumnammyeon': {
+                first: { mobile: '/assets/geumnam_01.jpg', ipad: '/assets/geumnam_01_ipad.jpg' },
+                second: { mobile: '/assets/geumnam_02.jpg', ipad: '/assets/geumnam_02_ipad.jpg' }
+            },
+            'yeongimyeon': {
+                first: { mobile: '/assets/yeongi_01.jpg', ipad: '/assets/yeongi_01_ipad.jpg' },
+                second: { mobile: '/assets/yeongi_02.jpg', ipad: '/assets/yeongi_02_ipad.jpg' }
+            },
+            'janggunmyeon': {
+                first: { mobile: '/assets/janggun_01.jpg', ipad: '/assets/janggun_01_ipad.jpg' },
+                second: { mobile: '/assets/janggun_02.jpg', ipad: '/assets/janggun_02_ipad.jpg' }
+            },
+            'yeondongmyeon': {
+                first: { mobile: '/assets/yeondong_01.jpg', ipad: '/assets/yeondong_01_ipad.jpg' },
+                second: { mobile: '/assets/yeondong_02.jpg', ipad: '/assets/yeondong_02_ipad.jpg' }
+            },
+            'otherarea': {
+                first: { mobile: '/assets/other_01.jpg', ipad: '/assets/other_01_ipad.jpg' },
+                second: { mobile: '/assets/other_02.jpg', ipad: '/assets/other_02_ipad.jpg' }
             }
         };
 
-        // 4. [클릭 이벤트] 버튼 동작
+        // DOM 요소 가져오기
+        const ipadSource = document.getElementById('ipad-source');
+        const imgElement = document.getElementById('main-image');
+        const btnElement = document.getElementById('next-btn');
+
+        // 현재 동네 데이터 가져오기 (없으면 otherarea로 대체)
+        const currentData = districtContent[storedDistrict] || districtContent['otherarea'];
+
+        // [핵심 함수] 이미지 업데이트 (모바일 & 아이패드 동시 처리)
+        function updateImages(stageData) {
+            if (!stageData) return;
+
+            // 1. 아이패드용 srcset 변경
+            // 아이패드용 이미지가 없으면 모바일 이미지로 대체(안전장치)
+            ipadSource.setAttribute('srcset', stageData.ipad || stageData.mobile);
+
+            // 2. 모바일/기본용 src 변경
+            imgElement.setAttribute('src', stageData.mobile);
+        }
+
+        // 3. [초기 실행] 페이지 로드 시 첫 번째 이미지 세팅
+        window.onload = function () {
+            if (currentData) {
+                updateImages(currentData.first);
+            }
+        };
+
+        // 4. [클릭 이벤트] 버튼 동작 핸들러
         function handleButtonClick() {
             clickCount++;
 
             if (clickCount === 1) {
-                // --- 첫 번째 클릭: 해당 동네의 두 번째 이미지로 변경 ---
-                if (districtContent[storedDistrict]) {
-                    imgElement.src = districtContent[storedDistrict].second;
+                // --- 첫 번째 클릭: 두 번째 이미지 세트로 변경 ---
+                if (currentData) {
+                    updateImages(currentData.second);
                 }
-                
+
                 // 버튼 텍스트 변경
                 btnElement.innerText = '꽃 만들러 가기';
 
             } else if (clickCount === 2) {
                 // --- 두 번째 클릭: 다음 페이지로 이동 ---
-                location.href = 'page8.html'; 
+                location.href = 'page8.html';
             }
         }
     </script>
 </body>
+
 </html>
