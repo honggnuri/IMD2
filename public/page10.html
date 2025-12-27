@@ -6,6 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Sejong Bloom - The Garden</title>
     <style>
+        /* 폰트 설정 */
+        @font-face {
+            font-family: 'UhBeeZIGLE';
+            src: url('https://gcore.jsdelivr.net/gh/projectnoonnu/noonfonts_five@.2.0/UhBeeZIGLE.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: 'OngleipParkDahyeon';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2411-3@1.0/Ownglyph_ParkDaHyun.woff2') format('woff2');
+            font-weight: normal;
+            font-display: swap;
+        }
+
         body {
             margin: 0;
             overflow: hidden;
@@ -16,13 +31,15 @@
         .flower-label {
             margin-top: -45px;
             color: white;
-            font-family: 'Noto Sans KR', sans-serif;
+            font-family: 'OngleipParkDahyeon';
             font-size: 14px;
             font-weight: 300;
-            text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
             padding: 5px;
             pointer-events: none;
-            opacity: 0.9;
+            opacity: 1;
+            /* 기본 불투명도 */
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
+            /* 가독성을 위해 그림자 추가 추천 */
         }
 
         #guide {
@@ -38,68 +55,103 @@
             z-index: 10;
         }
 
+        /* --- 🌼 UI 컨테이너 (반응형 % 적용) --- */
         #ui-container {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 200px;
-            max-height: 80vh;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(8px);
-            border-radius: 15px;
-            padding: 15px;
-            overflow-y: auto;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            color: white;
-            font-family: 'Noto Sans KR', sans-serif;
+            top: 5%;
+            right: 1%;
+            width: 22%;
+            height: 90%;
+            min-width: 260px;
+            max-width: 500px;
+            max-height: 98vh;
+            background-image: url('/public/assets/final_list.png');
+            background-repeat: no-repeat;
+            background-size: 100% 100%;
+            background-color: transparent;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             z-index: 20;
+            pointer-events: none;
         }
 
         #ui-container h3 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
-            padding-bottom: 5px;
+            display: none;
         }
 
+        /* --- 📋 리스트 영역 --- */
+        #flower-list {
+            margin-top: 30%;
+            margin-bottom: 10%;
+
+            /* 👇 너비를 70%에서 60%로 줄여서 여백을 확보 */
+            width: 68%;
+            height: 86%;
+            overflow-y: auto;
+            pointer-events: auto;
+            padding-right: 2px;
+            position: relative;
+
+            /* 👇 마이너스(-) 값을 넣어 왼쪽으로 당기기 */
+            transform: translateX(30px);
+        }
+
+        /* --- 🌼 리스트 아이템 (버튼) --- */
         .flower-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            margin-bottom: 5px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
+            display: block;
+            width: 86%;
+            box-sizing: border-box;
+            padding: 10px 0;
+            margin-bottom: 1.5vh;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: clamp(12px, 1.5vw, 15px);
+            color: #555;
+            text-align: center;
             cursor: pointer;
-            transition: background 0.2s;
-            font-size: 14px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
 
         .flower-item:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: #fdfdfd;
+            border-color: #87CEEB;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             color: #333;
         }
 
         .flower-icon {
-            margin-right: 8px;
+            display: none;
         }
 
-        #ui-container::-webkit-scrollbar {
+        /* 스크롤바 */
+        #flower-list::-webkit-scrollbar {
             width: 6px;
         }
 
-        #ui-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 3px;
+        #flower-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
         }
-        /* --- 📱 모바일 전용 스타일 추가 --- */
 
-        /* 랜덤 버튼 (기본은 숨김, 모바일에서만 등장) */
+        #flower-list::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        #flower-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* --- 📱 모바일 전용 스타일 --- */
         #mobile-random-btn {
-            display: none; /* 데스크탑에선 안 보임 */
+            display: none;
             position: absolute;
-            bottom: 80px;  /* 가이드 텍스트 위에 배치 */
+            bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
             padding: 12px 24px;
@@ -113,7 +165,7 @@
             font-weight: bold;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             cursor: pointer;
-            z-index: 25; /* UI보다 위에 */
+            z-index: 25;
             transition: transform 0.2s, background 0.2s;
             white-space: nowrap;
         }
@@ -123,14 +175,11 @@
             background: rgba(255, 255, 255, 0.4);
         }
 
-        /* 768px 이하 (모바일/태블릿 세로) 화면일 때 */
         @media (max-width: 768px) {
-            /* 1. 기존 리스트 UI 숨기기 */
             #ui-container {
                 display: none !important;
             }
 
-            /* 2. 랜덤 버튼 보이기 */
             #mobile-random-btn {
                 display: flex;
                 align-items: center;
@@ -155,16 +204,15 @@
 <body>
 
     <div id="guide">이게 우리의 정원이야!</div>
-    
+
     <div id="ui-container">
-        <h3>이런 꽃이 있어!</h3>
-        <div id="flower-list"></div>
+        <div id="flower-list">
+        </div>
     </div>
 
     <button id="mobile-random-btn">
         다른 꽃들도 둘러볼래?
     </button>
-
 
     <script type="x-shader/x-vertex" id="skyVertexShader">
         varying vec2 vUv; varying vec3 vWorldPosition; void main() { vUv = uv; vec4 worldPosition = modelMatrix * vec4(position, 1.0); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -380,18 +428,16 @@
                 // 🔑 핵심: 최하단을 y = 0으로
                 flowerVisual.position.y = -box.min.y;
 
-               /* ===============================
-                   🏷 이름표 (업데이트된 지역 매핑)
-                =============================== */
                 /* ===============================
-                   🏷 이름표 (줄바꿈 적용)
+                   🏷 이름표 (지역 한글화 + 줄바꿈 + 투명도 설정)
                 =============================== */
                 const nameDiv = document.createElement('div');
                 nameDiv.className = 'flower-label';
-                
-                // ✨ 두 줄이니까 가운데 정렬이 예쁩니다
-                nameDiv.style.textAlign = 'center'; 
 
+                // ✨ 두 줄이니까 가운데 정렬
+                nameDiv.style.textAlign = 'center';
+
+                // 1. 지역 매핑 리스트
                 const districtNames = {
                     'eojindong': '어진동', 'dodam': '도담동', 'areum': '아름동',
                     'hamildong': '한솔동', 'naseongdong': '나성동', 'bangok_jiphyeon': '반곡·집현동',
@@ -400,29 +446,30 @@
                     'janggunmyeon': '장군면', 'yeondongmyeon': '연동면', 'otherarea': '기타 지역'
                 };
 
+                // 2. 텍스트 내용 만들기
                 let locationPart = "";
-                
                 if (data.location) {
                     const koreanName = districtNames[data.location] || data.location;
                     locationPart = `${koreanName}에서 온`;
                 }
 
-                // ✨ 핵심 수정: innerHTML 사용 및 <br> 태그 추가
+                // 3. HTML 적용 (<br> 줄바꿈)
                 if (locationPart) {
-                    // 지역 정보가 있으면: "지역에서 온 <엔터> 이름의 꽃"
                     nameDiv.innerHTML = `${locationPart}<br>${data.userName || '손님'}의 꽃`;
                 } else {
-                    // 지역 정보가 없으면: 그냥 "이름의 꽃" (줄바꿈 없음)
                     nameDiv.textContent = `${data.userName || '손님'}의 꽃`;
                 }
 
+                // 4. 라벨 객체 생성 및 위치 잡기
                 const label = new CSS2DObject(nameDiv);
-                label.position.set(
-                    0,
-                    box.max.y - box.min.y + 5,
-                    0
-                );
+
+                // 박스 높이만큼 위로 띄우기 (+5는 여유 간격)
+                label.position.set(0, box.max.y - box.min.y + 5, 0);
+
                 flowerVisual.add(label);
+
+                // ✨ [핵심] 나중에 animate 함수에서 투명도를 조절하기 위해 저장해둡니다.
+                flowerRoot.userData.labelObject = label;
 
                 /* ===============================
                    🌱 씬에 추가
@@ -487,8 +534,19 @@
             const listContainer = document.getElementById('flower-list');
             const item = document.createElement('div');
             item.className = 'flower-item';
-            item.innerHTML = `<span class="flower-icon">🌼</span> ${name}`;
-            item.onclick = () => focusOnFlower(flowerGroup);
+
+            // userData에서 정보 가져오기 시도
+            const userData = flowerGroup.userData;
+            const userName = userData.userName || name;
+
+            // 리스트에는 간단하게 "OOO의 꽃"만 출력
+            item.innerText = userName + "의 꽃";
+
+            item.onclick = (e) => {
+                e.stopPropagation();
+                focusOnFlower(flowerGroup);
+            };
+
             listContainer.prepend(item);
         }
 
@@ -524,21 +582,27 @@
         });
 
         const clock = new THREE.Clock();
+
+        // 🟢 애니메이션 루프 (중복 제거 및 통합됨)
         function animate() {
             requestAnimationFrame(animate);
             const time = clock.getElapsedTime();
             controls.update();
-            grassUniforms.uTime.value = time; skyUniforms.uTime.value = time;
 
-            // 🔴 카메라 이동 (isCameraLocked 일 때만 강제 이동)
+            grassUniforms.uTime.value = time;
+            skyUniforms.uTime.value = time;
+
+            // 📷 카메라 강제 이동 (락 걸려있을 때만)
             if (isCameraLocked && targetCameraPos && targetControlsTarget) {
                 camera.position.lerp(targetCameraPos, 0.05);
                 controls.target.lerp(targetControlsTarget, 0.05);
             }
 
+            // 🌸 꽃 애니메이션 처리
             flowers.forEach(flower => {
+                // 1. 성장 애니메이션
                 if (flower.userData.isGrowing) {
-                    flower.userData.growProgress += 0.015; // 속도 조절
+                    flower.userData.growProgress += 0.015;
                     let s = flower.userData.growProgress;
                     // 탄성 효과 (Ease Out Back 느낌)
                     let scale = s;
@@ -549,10 +613,29 @@
                         scale * FLOWER_GLOBAL_SCALE,
                         scale * FLOWER_GLOBAL_SCALE
                     );
-
-
                 }
+
+                // 2. 흔들림 효과
                 flower.rotation.z = Math.sin(time * 1.5 + flower.userData.swayOffset) * 0.05;
+
+                // ✨ 3. 거리에 따른 이름표 투명도 조절
+                if (flower.userData.labelObject) {
+                    // 카메라와 꽃 사이의 거리 계산
+                    const distance = camera.position.distanceTo(flower.position);
+
+                    // 거리 범위 설정 (30미터 이내 선명, 100미터 이상 투명)
+                    const minDist = 30;
+                    const maxDist = 100;
+
+                    // 거리 비율 계산 (0 ~ 1 사이 값)
+                    let opacity = 1 - (distance - minDist) / (maxDist - minDist);
+
+                    // 값 제한 (0 ~ 1 사이로 고정)
+                    opacity = Math.max(0, Math.min(1, opacity));
+
+                    // 라벨의 투명도에 적용
+                    flower.userData.labelObject.element.style.opacity = opacity;
+                }
             });
 
             renderer.render(scene, camera);
@@ -566,11 +649,20 @@
             labelRenderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        createTerrain(); createGrass(); createTrees(); createRocks(); createCliffs();
+        // 초기화 실행
+        createTerrain();
+        createGrass();
+        createTrees();
+        createRocks();
+        createCliffs();
         loadInitialFlowers();
+
+        // 애니메이션 시작
         animate();
+
+        // 📱 모바일 랜덤 버튼 이벤트 연결
         const randomBtn = document.getElementById('mobile-random-btn');
-        
+
         if (randomBtn) {
             randomBtn.addEventListener('click', () => {
                 // 1. 꽃이 하나도 없으면 중단
@@ -583,16 +675,15 @@
                 const randomIndex = Math.floor(Math.random() * flowers.length);
                 const randomFlower = flowers[randomIndex];
 
-                // 3. 해당 꽃으로 이동 (기존 함수 활용)
+                // 3. 해당 꽃으로 이동
                 focusOnFlower(randomFlower);
 
-                // 4. (선택사항) 버튼 텍스트에 누구 꽃인지 잠깐 표시
+                // 4. 버튼 텍스트 변경 효과
                 const originalText = randomBtn.innerHTML;
                 const ownerName = randomFlower.userData.userName || '누군가';
-                
+
                 randomBtn.innerHTML = `✨ ${ownerName}님의 꽃!`;
-                
-                // 1.5초 뒤 원래 텍스트로 복구
+
                 setTimeout(() => {
                     randomBtn.innerHTML = originalText;
                 }, 1500);
@@ -600,4 +691,5 @@
         }
     </script>
 </body>
+
 </html>
