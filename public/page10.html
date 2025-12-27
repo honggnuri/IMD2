@@ -48,7 +48,7 @@
             width: 100%;
             text-align: center;
             color: white;
-          font-family: 'UhBeeZIGLE';
+            font-family: 'UhBeeZIGLE';
             font-size: 18px;
             pointer-events: none;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
@@ -245,7 +245,7 @@
 
         const CONFIG = {
             flowerScale: 1.5,
-            worldSize: 300, grassCount: 160000, treeCount: 60, rockCount: 60
+            worldSize: 400, grassCount: 300000, treeCount: 120, rockCount: 70
         };
 
         let seedValue = 123456;
@@ -287,30 +287,78 @@
         controls.maxPolarAngle = Math.PI / 2 - 0.05;
         controls.target.set(0, 5, 0); controls.enableDamping = true;
 
-        const sunLight = new THREE.DirectionalLight(0xfff0dd, 2.0);
+        const sunLight = new THREE.DirectionalLight(0xffe0b0, 7);
         sunLight.position.set(80, 100, 60);
         sunLight.castShadow = true;
         sunLight.shadow.mapSize.set(2048, 2048);
         scene.add(sunLight);
-        scene.add(new THREE.AmbientLight(0xcceeff, 0.7));
+
+        // [수정] 그림자를 더 진하게! (환경광 강도 0.7 -> 0.4로 감소)
+        // 전체적으로 깔리는 빛을 줄여서, 햇빛을 받는 곳과 그늘진 곳의 대비를 높입니다.
+        scene.add(new THREE.AmbientLight(0xcceeff, 0.5));
+
 
         // 2. 환경 생성
         const skyUniforms = { uTime: { value: 0 }, uColorSkyTop: { value: new THREE.Color(0x4CA1D3) }, uColorSkyBottom: { value: new THREE.Color(0xAEEEEE) }, uColorCloud: { value: new THREE.Color(0xFFFFFF) } };
         const skyMat = new THREE.ShaderMaterial({ vertexShader: document.getElementById('skyVertexShader').textContent, fragmentShader: document.getElementById('skyFragmentShader').textContent, uniforms: skyUniforms, side: THREE.BackSide });
         scene.add(new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 32), skyMat));
-        scene.fog = new THREE.Fog(0xAEEEEE, 60, 200);
+        scene.fog = new THREE.Fog(0xAEEEEE, 60, 400);
+        // [추가] 하늘의 빛을 캡처해서 유리에 반사되게 만듭니다. (검은색 현상 해결)
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
 
+        // 현재 씬(하늘 포함)을 촬영해서 환경맵으로 적용
+        scene.environment = pmremGenerator.fromScene(scene).texture;
         function getTerrainHeight(x, z) { const y1 = Math.sin(x * 0.02) * 6.0; const y2 = Math.cos(z * 0.025) * 5.0; const y3 = Math.sin(x * 0.05 + z * 0.05) * 2.0; return (y1 + y2 + y3) - 3; }
         function createTerrain() { const geo = new THREE.PlaneGeometry(CONFIG.worldSize, CONFIG.worldSize, 64, 64); geo.rotateX(-Math.PI / 2); const pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) { pos.setY(i, getTerrainHeight(pos.getX(i), pos.getZ(i))); } geo.computeVertexNormals(); const mat = new THREE.MeshStandardMaterial({ color: 0x7a9c6b }); const terrain = new THREE.Mesh(geo, mat); terrain.receiveShadow = true; scene.add(terrain); }
 
         const grassUniforms = { uTime: { value: 0 }, uColorBottom: { value: new THREE.Color(0x6a9e7a) }, uColorTop: { value: new THREE.Color(0xc3e8a8) } };
-        function createGrass() { const grassGeo = new THREE.ConeGeometry(0.03, 1.0, 3, 1); grassGeo.translate(0, 0.5, 0); const grassMat = new THREE.ShaderMaterial({ vertexShader: document.getElementById('grassVertexShader').textContent, fragmentShader: document.getElementById('grassFragmentShader').textContent, uniforms: grassUniforms, side: THREE.DoubleSide }); const mesh = new THREE.InstancedMesh(grassGeo, grassMat, CONFIG.grassCount); for (let i = 0; i < CONFIG.grassCount; i++) { const x = (seededRandom() - 0.5) * CONFIG.worldSize; const z = (seededRandom() - 0.5) * CONFIG.worldSize; const y = getTerrainHeight(x, z); dummy.position.set(x, y, z); const scale = 0.6 + seededRandom() * 0.6; dummy.scale.set(scale, scale * 0.8, scale); dummy.rotation.y = seededRandom() * Math.PI; dummy.rotation.x = (seededRandom() - 0.5) * 0.3; dummy.rotation.z = (seededRandom() - 0.5) * 0.3; dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); } mesh.receiveShadow = true; scene.add(mesh); }
+        function createGrass() { 
+            // [수정] 풀의 길이를 늘립니다.
+            // 기존: (0.03, 1.0, 3, 1) -> 높이 1.0
+            // 변경: (0.03, 2.5, 3, 1) -> 높이 2.5 (2.5배 길어짐)
+            const grassGeo = new THREE.ConeGeometry(0.03, 4, 3, 1); 
+            
+            // [수정] 풀이 길어진 만큼 중심점도 위로 올려야 땅에 박히지 않습니다.
+            // 높이(2.5)의 절반인 1.25만큼 위로 올립니다.
+            grassGeo.translate(0, 1.25, 0); 
+            
+            const grassMat = new THREE.ShaderMaterial({ 
+                vertexShader: document.getElementById('grassVertexShader').textContent, 
+                fragmentShader: document.getElementById('grassFragmentShader').textContent, 
+                uniforms: grassUniforms, 
+                side: THREE.DoubleSide 
+            }); 
+            
+            const mesh = new THREE.InstancedMesh(grassGeo, grassMat, CONFIG.grassCount); 
+            
+            for (let i = 0; i < CONFIG.grassCount; i++) { 
+                const x = (seededRandom() - 0.5) * CONFIG.worldSize; 
+                const z = (seededRandom() - 0.5) * CONFIG.worldSize; 
+                const y = getTerrainHeight(x, z); 
+                
+                dummy.position.set(x, y, z); 
+                
+                // 크기는 약간 랜덤하게 유지
+                const scale = 0.6 + seededRandom() * 0.6; 
+                dummy.scale.set(scale, scale * 0.8, scale); 
+                
+                dummy.rotation.y = seededRandom() * Math.PI; 
+                dummy.rotation.x = (seededRandom() - 0.5) * 0.3; 
+                dummy.rotation.z = (seededRandom() - 0.5) * 0.3; 
+                dummy.updateMatrix(); 
+                mesh.setMatrixAt(i, dummy.matrix); 
+            } 
+            
+            mesh.receiveShadow = true; 
+            scene.add(mesh); 
+        }
 
         function createTrees() { const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 5); trunkGeo.translate(0, 0.75, 0); const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, flatShading: true }); const leafGeo = new THREE.DodecahedronGeometry(2.2, 0); leafGeo.translate(0, 3.0, 0); const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true }); const trunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, CONFIG.treeCount); const leafMesh = new THREE.InstancedMesh(leafGeo, leafMat, CONFIG.treeCount); const leafColors = [0xFF7F50, 0xFFA07A, 0xFFD700, 0xE9967A]; for (let i = 0; i < CONFIG.treeCount; i++) { let x, z, dist; do { x = (seededRandom() - 0.5) * CONFIG.worldSize; z = (seededRandom() - 0.5) * CONFIG.worldSize; dist = Math.sqrt(x * x + z * z); } while (dist < 35); const y = getTerrainHeight(x, z); dummy.position.set(x, y, z); const scale = 0.8 + seededRandom() * 0.8; dummy.scale.set(scale, scale, scale); dummy.rotation.y = seededRandom() * Math.PI; dummy.updateMatrix(); trunkMesh.setMatrixAt(i, dummy.matrix); leafMesh.setMatrixAt(i, dummy.matrix); color.setHex(leafColors[Math.floor(seededRandom() * leafColors.length)]); leafMesh.setColorAt(i, color); } scene.add(trunkMesh); scene.add(leafMesh); }
 
         function createRocks() { const geo = new THREE.DodecahedronGeometry(1, 0); const mat = new THREE.MeshStandardMaterial({ color: 0xA9A9A9, flatShading: true }); const mesh = new THREE.InstancedMesh(geo, mat, CONFIG.rockCount); for (let i = 0; i < CONFIG.rockCount; i++) { const x = (seededRandom() - 0.5) * CONFIG.worldSize; const z = (seededRandom() - 0.5) * CONFIG.worldSize; const y = getTerrainHeight(x, z); dummy.position.set(x, y + 0.3, z); dummy.scale.set(1 + seededRandom(), 0.6 + seededRandom(), 1 + seededRandom()); dummy.rotation.set(seededRandom() * 3, seededRandom() * 3, seededRandom() * 3); dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); } scene.add(mesh); }
 
-        function createCliffs() { const columnGeo = new THREE.CylinderGeometry(3.5, 3.5, 60, 6); columnGeo.translate(0, 30, 0); const columnMat = new THREE.MeshStandardMaterial({ color: 0x3E424B, flatShading: true, roughness: 0.9 }); const cliffClusters = 8; const columnsPerCluster = 50; const totalColumns = cliffClusters * columnsPerCluster; const cliffMesh = new THREE.InstancedMesh(columnGeo, columnMat, totalColumns); let idx = 0; for (let i = 0; i < cliffClusters; i++) { const angle = (i / cliffClusters) * Math.PI * 2 + seededRandom() * 0.5; const dist = CONFIG.worldSize / 2 + 10 + seededRandom() * 20; const centerX = Math.cos(angle) * dist; const centerZ = Math.sin(angle) * dist; for (let j = 0; j < columnsPerCluster; j++) { const offsetX = (seededRandom() - 0.5) * 35; const offsetZ = (seededRandom() - 0.5) * 35; const heightScale = 0.8 + seededRandom() * 1.4; const groundY = getTerrainHeight(centerX + offsetX, centerZ + offsetZ); dummy.position.set(centerX + offsetX, groundY - 15, centerZ + offsetZ); dummy.scale.set(1, heightScale, 1); dummy.rotation.set(0, seededRandom() * Math.PI, 0); dummy.updateMatrix(); cliffMesh.setMatrixAt(idx++, dummy.matrix); } } scene.add(cliffMesh); }
+        function createCliffs() { const columnGeo = new THREE.CylinderGeometry(3.5, 3.5, 60, 6); columnGeo.translate(0, 30, 0); const columnMat = new THREE.MeshStandardMaterial({ color: 0x3E424B, flatShading: true, roughness: 0.9 }); const cliffClusters = 16; const columnsPerCluster = 50; const totalColumns = cliffClusters * columnsPerCluster; const cliffMesh = new THREE.InstancedMesh(columnGeo, columnMat, totalColumns); let idx = 0; for (let i = 0; i < cliffClusters; i++) { const angle = (i / cliffClusters) * Math.PI * 2 + seededRandom() * 0.5; const dist = CONFIG.worldSize / 2 + 10 + seededRandom() * 20; const centerX = Math.cos(angle) * dist; const centerZ = Math.sin(angle) * dist; for (let j = 0; j < columnsPerCluster; j++) { const offsetX = (seededRandom() - 0.5) * 35; const offsetZ = (seededRandom() - 0.5) * 35; const heightScale = 0.8 + seededRandom() * 1.4; const groundY = getTerrainHeight(centerX + offsetX, centerZ + offsetZ); dummy.position.set(centerX + offsetX, groundY - 15, centerZ + offsetZ); dummy.scale.set(1, heightScale, 1); dummy.rotation.set(0, seededRandom() * Math.PI, 0); dummy.updateMatrix(); cliffMesh.setMatrixAt(idx++, dummy.matrix); } } scene.add(cliffMesh); }
 
         // --- 3. 🌸 모델 로딩 ---
         async function getModel(prefabName) {
@@ -393,22 +441,44 @@
                     }
 
                     // 머티리얼
+                    // 머티리얼 색상 처리
                     const colorHex = partData.color.startsWith('#')
                         ? partData.color
                         : '#' + partData.color;
 
-                    const mat = new THREE.MeshStandardMaterial({
-                        color: new THREE.Color(colorHex),
-                        roughness: 0.6,
-                        metalness: 0.1,
-                        side: THREE.DoubleSide
+                    // [최종_업그레이드] 안정적이면서 영롱한 '코팅 아크릴' 스타일
+                    const flowerColor = new THREE.Color(colorHex);
+
+                    // 다시 PhysicalMaterial을 쓰지만, 검정 버그를 유발하는 transmission은 끕니다.
+                    const mat = new THREE.MeshPhysicalMaterial({
+                        color: flowerColor,
+
+                        // 💎 [핵심 1] 탕후루 같은 광택 코팅 추가! (제일 예뻐지는 부분)
+                        clearcoat: 1.0,          // 코팅 강도 최대
+                        clearcoatRoughness: 0.0, // 유리알처럼 매끈한 표면
+
+                        // ✨ [핵심 2] 기본 표면 반짝임 강화
+                        roughness: 0.1,          // 아주 매끈하게
+                        metalness: 0.2,          // 주변 환경(하늘)을 더 잘 반사하게
+
+                        // 🛡️ [안전장치] 검정색 방지용 은은한 발광
+                        emissive: flowerColor,
+                        emissiveIntensity: 0.2,  // 아까보다 약하게, 그림자만 안 질 정도로
+
+                        // 💧 [투명도 설정]
+                        transparent: true,
+                        opacity: 0.75,           // 맑고 투명한 느낌
+
+                        side: THREE.DoubleSide,
+                        depthWrite: false        // 깜빡임 방지
                     });
 
                     mesh.traverse(c => {
                         if (c.isMesh) {
                             c.material = mat;
-                            c.castShadow = true;
-                            c.receiveShadow = true;
+                            // 그림자 끄기 유지 (깨끗한 표현을 위해)
+                            c.castShadow = false;
+                            c.receiveShadow = false;
                         }
                     });
 
