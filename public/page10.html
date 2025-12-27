@@ -289,13 +289,13 @@
 
         const sunLight = new THREE.DirectionalLight(0xffe0b0, 7);
         sunLight.position.set(80, 100, 60);
-        sunLight.castShadow = true;
+        sunLight.castShadow = false;
         sunLight.shadow.mapSize.set(2048, 2048);
         scene.add(sunLight);
 
         // [수정] 그림자를 더 진하게! (환경광 강도 0.7 -> 0.4로 감소)
         // 전체적으로 깔리는 빛을 줄여서, 햇빛을 받는 곳과 그늘진 곳의 대비를 높입니다.
-        scene.add(new THREE.AmbientLight(0xcceeff, 0.5));
+        scene.add(new THREE.AmbientLight(0xcceeff, 0.9));
 
 
         // 2. 환경 생성
@@ -312,16 +312,16 @@
         function getTerrainHeight(x, z) { const y1 = Math.sin(x * 0.02) * 6.0; const y2 = Math.cos(z * 0.025) * 5.0; const y3 = Math.sin(x * 0.05 + z * 0.05) * 2.0; return (y1 + y2 + y3) - 3; }
         function createTerrain() { const geo = new THREE.PlaneGeometry(CONFIG.worldSize, CONFIG.worldSize, 64, 64); geo.rotateX(-Math.PI / 2); const pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) { pos.setY(i, getTerrainHeight(pos.getX(i), pos.getZ(i))); } geo.computeVertexNormals(); const mat = new THREE.MeshStandardMaterial({ color: 0x7a9c6b }); const terrain = new THREE.Mesh(geo, mat); terrain.receiveShadow = true; scene.add(terrain); }
 
-        const grassUniforms = { uTime: { value: 0 }, uColorBottom: { value: new THREE.Color(0x6a9e7a) }, uColorTop: { value: new THREE.Color(0xc3e8a8) } };
+        const grassUniforms = { uTime: { value: 0 }, uColorBottom: { value: new THREE.Color(0xACD58E) }, uColorTop: { value: new THREE.Color(0xc3e8a8) } };
         function createGrass() { 
             // [수정] 풀의 길이를 늘립니다.
             // 기존: (0.03, 1.0, 3, 1) -> 높이 1.0
             // 변경: (0.03, 2.5, 3, 1) -> 높이 2.5 (2.5배 길어짐)
-            const grassGeo = new THREE.ConeGeometry(0.03, 4, 3, 1); 
+            const grassGeo = new THREE.ConeGeometry(0.2, 4, 3, 1); 
             
             // [수정] 풀이 길어진 만큼 중심점도 위로 올려야 땅에 박히지 않습니다.
             // 높이(2.5)의 절반인 1.25만큼 위로 올립니다.
-            grassGeo.translate(0, 1.25, 0); 
+            grassGeo.translate(0, 1.0, 0); 
             
             const grassMat = new THREE.ShaderMaterial({ 
                 vertexShader: document.getElementById('grassVertexShader').textContent, 
@@ -349,12 +349,12 @@
                 dummy.updateMatrix(); 
                 mesh.setMatrixAt(i, dummy.matrix); 
             } 
-            
+            mesh.castShadow = false;
             mesh.receiveShadow = true; 
             scene.add(mesh); 
         }
 
-        function createTrees() { const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 5); trunkGeo.translate(0, 0.75, 0); const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, flatShading: true }); const leafGeo = new THREE.DodecahedronGeometry(2.2, 0); leafGeo.translate(0, 3.0, 0); const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true }); const trunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, CONFIG.treeCount); const leafMesh = new THREE.InstancedMesh(leafGeo, leafMat, CONFIG.treeCount); const leafColors = [0xFF7F50, 0xFFA07A, 0xFFD700, 0xE9967A]; for (let i = 0; i < CONFIG.treeCount; i++) { let x, z, dist; do { x = (seededRandom() - 0.5) * CONFIG.worldSize; z = (seededRandom() - 0.5) * CONFIG.worldSize; dist = Math.sqrt(x * x + z * z); } while (dist < 35); const y = getTerrainHeight(x, z); dummy.position.set(x, y, z); const scale = 0.8 + seededRandom() * 0.8; dummy.scale.set(scale, scale, scale); dummy.rotation.y = seededRandom() * Math.PI; dummy.updateMatrix(); trunkMesh.setMatrixAt(i, dummy.matrix); leafMesh.setMatrixAt(i, dummy.matrix); color.setHex(leafColors[Math.floor(seededRandom() * leafColors.length)]); leafMesh.setColorAt(i, color); } scene.add(trunkMesh); scene.add(leafMesh); }
+        function createTrees() { const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 8, 5); trunkGeo.translate(0, 4, 0); const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, flatShading: true }); const leafGeo = new THREE.DodecahedronGeometry(4, 0); leafGeo.translate(0, 8.0, 0); const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true }); const trunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, CONFIG.treeCount); const leafMesh = new THREE.InstancedMesh(leafGeo, leafMat, CONFIG.treeCount); const leafColors = [0xFF7F50, 0xFFA07A, 0xFFD700, 0xE9967A]; for (let i = 0; i < CONFIG.treeCount; i++) { let x, z, dist; do { x = (seededRandom() - 0.5) * CONFIG.worldSize; z = (seededRandom() - 0.5) * CONFIG.worldSize; dist = Math.sqrt(x * x + z * z); } while (dist < 35); const y = getTerrainHeight(x, z); dummy.position.set(x, y, z); const scale = 0.8 + seededRandom() * 0.8; dummy.scale.set(scale, scale, scale); dummy.rotation.y = seededRandom() * Math.PI; dummy.updateMatrix(); trunkMesh.setMatrixAt(i, dummy.matrix); leafMesh.setMatrixAt(i, dummy.matrix); color.setHex(leafColors[Math.floor(seededRandom() * leafColors.length)]); leafMesh.setColorAt(i, color); } scene.add(trunkMesh); scene.add(leafMesh); }
 
         function createRocks() { const geo = new THREE.DodecahedronGeometry(1, 0); const mat = new THREE.MeshStandardMaterial({ color: 0xA9A9A9, flatShading: true }); const mesh = new THREE.InstancedMesh(geo, mat, CONFIG.rockCount); for (let i = 0; i < CONFIG.rockCount; i++) { const x = (seededRandom() - 0.5) * CONFIG.worldSize; const z = (seededRandom() - 0.5) * CONFIG.worldSize; const y = getTerrainHeight(x, z); dummy.position.set(x, y + 0.3, z); dummy.scale.set(1 + seededRandom(), 0.6 + seededRandom(), 1 + seededRandom()); dummy.rotation.set(seededRandom() * 3, seededRandom() * 3, seededRandom() * 3); dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); } scene.add(mesh); }
 
